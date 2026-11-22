@@ -1,5 +1,5 @@
 // ==================== KONFIGURASI UTAMA ====================
-const ADMIN_MASTER_PIN = 'MjMxMTI2'; // PIN 6 Angka Admin LBB
+const ADMIN_MASTER_PIN = 'MjMxMTI2'; // PIN 6 Angka Admin LBB (231126)
 const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMXLtM4WQwOCoDDb-lNpJfyBJR1BP2pRM6CnobiAhdca3hMYhBgw5LaPrA2sMKl-VkbQ/exec';
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
@@ -624,45 +624,124 @@ function handleAdminImageUpload(event, idx) {
   reader.readAsDataURL(file);
 }
 
-function exportPacketJson() {
+function buildPacketObject() {
   const title = document.getElementById('admTitle').value.trim() || 'Paket Tryout LBB';
   const subtitle = document.getElementById('admSubtitle').value.trim() || `${adminQuestions.length} Soal`;
   const duration = parseInt(document.getElementById('admDuration').value) || 60;
   const optionCount = parseInt(document.getElementById('admOptionCount').value) || 4;
   const token = document.getElementById('admToken').value.trim().toUpperCase() || 'TRYOUT26';
   const mcmaRule = document.getElementById('admMcmaRule').value;
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  return {
+    fileName: `${slug || 'paket-tryout'}.json`,
+    packetObj: {
+      title,
+      subtitle,
+      duration,
+      optionCount,
+      token,
+      mcmaRule,
+      questions: adminQuestions.map(q => ({
+        type: q.type,
+        text: q.text,
+        image: q.image,
+        options: q.options.slice(0, optionCount),
+        answer: q.answer,
+        points: q.points
+      }))
+    }
+  };
+}
+
+function exportPacketJson() {
+  if (adminQuestions.length === 0) {
+    alert('Tambahkan minimal 1 soal terlebih dahulu.');
+    return;
+  }
+
+  const { fileName, packetObj } = buildPacketObject();
+  const blob = new Blob([JSON.stringify(packetObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Ubah tampilan tombol menjadi hijau bertuliskan "Downloaded" selama 3 detik
+  const btn = document.getElementById('btnDownloadPacketLocal');
+  if (btn && !btn.dataset.animating) {
+    btn.dataset.animating = '1';
+    const oriHtml = btn.innerHTML;
+    btn.classList.add('btn-success-state');
+    btn.innerHTML = `<i data-lucide="check"></i> Downloaded`;
+    refreshIcons();
+
+    setTimeout(() => {
+      btn.classList.remove('btn-success-state');
+      btn.innerHTML = oriHtml;
+      delete btn.dataset.animating;
+      refreshIcons();
+    }, 3000);
+  }
+}
+
+async function sendPacketToAdminDrive() {
+  const scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
+  if (!scriptUrl || scriptUrl.includes('PASTE_URL')) {
+    alert('URL Google Apps Script belum dipasang di js/app.js.');
+    return;
+  }
 
   if (adminQuestions.length === 0) {
     alert('Tambahkan minimal 1 soal terlebih dahulu.');
     return;
   }
 
-  const packetObj = {
-    title,
-    subtitle,
-    duration,
-    optionCount,
-    token,
-    mcmaRule,
-    questions: adminQuestions.map(q => ({
-      type: q.type,
-      text: q.text,
-      image: q.image,
-      options: q.options.slice(0, optionCount),
-      answer: q.answer,
-      points: q.points
-    }))
-  };
+  const { fileName, packetObj } = buildPacketObject();
+  const btn = document.getElementById('btnSendPacketCloud');
+  if (!btn || btn.dataset.animating) return;
 
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const blob = new Blob([JSON.stringify(packetObj, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+  btn.dataset.animating = '1';
+  const oriHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerText = 'Mengirim...';
 
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${slug || 'paket-tryout'}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'upload_packet',
+        packetTitle: packetObj.title,
+        questionCount: adminQuestions.length,
+        fileName: fileName,
+        content: JSON.stringify(packetObj, null, 2)
+      })
+    });
+
+    // Ubah tampilan tombol menjadi hijau bertuliskan "Terkirim!" selama 3 detik
+    btn.classList.add('btn-success-state');
+    btn.innerHTML = `<i data-lucide="check-circle"></i> Terkirim!`;
+    refreshIcons();
+
+    setTimeout(() => {
+      btn.classList.remove('btn-success-state');
+      btn.disabled = false;
+      btn.innerHTML = oriHtml;
+      delete btn.dataset.animating;
+      refreshIcons();
+    }, 3000);
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = oriHtml;
+    delete btn.dataset.animating;
+    refreshIcons();
+    alert('Gagal mengirim ke Google Drive. Gunakan tombol Download Cadangan (.JSON) di bawahnya.');
+  }
 }
 
 function importPacketJson(event) {
