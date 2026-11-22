@@ -1,6 +1,6 @@
 // ==================== KONFIGURASI UTAMA ====================
 const ADMIN_MASTER_PIN = 'MDkwOTAz'; // PIN 6 Angka Admin LBB
-const DEFAULT_GOOGLE_SCRIPT_URL = 'PASTE_URL_WEB_APP_GOOGLE_SCRIPT_DI_SINI';
+const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMXLtM4WQwOCoDDb-lNpJfyBJR1BP2pRM6CnobiAhdca3hMYhBgw5LaPrA2sMKl-VkbQ/exec';
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
 let availablePackets = [];
