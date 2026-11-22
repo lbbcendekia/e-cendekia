@@ -38,7 +38,21 @@ html, body {
 .container-narrow {
   max-width: 540px;
   margin: 0 auto;
-  padding: 28px 18px 60px;
+  padding: 24px 16px 48px;
+  width: 100%;
+}
+
+#homeScreen:not(.hidden) {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#homeScreen .container-narrow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
 }
 
 .container-admin {
@@ -56,8 +70,8 @@ html, body {
 .brand-logo-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 10px;    /* Menurunkan posisi logo dari atas layar */
-  margin-bottom: 50px; /* Jarak ke badge di bawahnya */
+  margin-top: 10px;
+  margin-bottom: 50px;
 }
 
 .brand-logo-img {
@@ -108,10 +122,10 @@ html, body {
   display: inline-block;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 0.92rem;       /* Diperbesar dari 0.72rem (~11.5px) menjadi ~14.7px */
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 1.2px;
-  padding: 8px 18px;        /* Ruang dalam kapsul diperbesar agar seimbang */
+  padding: 8px 18px;
   border-radius: 24px;
   border: 1.5px solid rgba(132, 0, 0, 0.35);
   margin-bottom: 12px;
@@ -184,8 +198,10 @@ html, body {
 }
 
 .admin-footer-link {
+  margin-top: auto;
+  padding-top: 32px;
+  padding-bottom: 8px;
   text-align: center;
-  margin-top: 26px;
 }
 
 .btn-link-subtle {
@@ -737,14 +753,6 @@ input:focus, select:focus, textarea:focus {
 .score-sub {
   font-size: 0.8rem;
   opacity: 0.85;
-}
-
-.sync-status-banner {
-  background: rgba(255, 255, 255, 0.16);
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
 }
 
 .res-stats-row {
