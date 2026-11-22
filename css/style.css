@@ -2,17 +2,17 @@
   --primary: #840000;         /* Merah Maroon Utama */
   --primary-light: #b82e2e;   /* Maroon Cerah untuk Aksen */
   --primary-soft: #f5e6e6;    /* Latar Lembut Bernuansa Maroon */
-  --bg-main: #e0e0e0;         /* Latar Utama (#e0e0e0) */
-  --bg-card: #ffffff;         /* Latar Kartu Putih (#FFFFFF) */
-  --bg-surface: #f4f2f2;      /* Permukaan Input & Sub-kartu */
+  --bg-main: #ffffff;         /* Latar Utama Putih Bersih (#FFFFFF) */
+  --bg-card: #f2f0f0;         /* Latar Kartu Abu-Abu Lembut */
+  --bg-surface: #ffffff;      /* Permukaan Input & Sub-kartu Putih */
   --text-main: #1c1818;
   --text-muted: #544949;
-  --border-color: #d0c8c8;
+  --border-color: #dcd6d6;
   --accent-amber: #d97706;
   --accent-green: #166b0e;
   --radius-lg: 18px;
   --radius-md: 12px;
-  --shadow-sm: 0 3px 10px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 3px 10px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -193,7 +193,7 @@ html, body {
 }
 
 .btn-outline {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--primary);
   border: 1.5px solid var(--primary);
   padding: 11px 16px;
@@ -208,7 +208,7 @@ html, body {
 }
 
 .btn-outline-sm {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--primary);
   border: 1px solid var(--primary);
   padding: 7px 12px;
@@ -400,7 +400,8 @@ input:focus, select:focus, textarea:focus {
 
 .mode-switch-group {
   display: inline-flex;
-  background: #d0caca;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   padding: 3px;
   border-radius: 10px;
 }
