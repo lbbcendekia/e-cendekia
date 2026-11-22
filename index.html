@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>E-Cendekia — Portal Tryout LJK & CBT</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="css/style.css?v=2" />
+</head>
+<body>
+
+  <!-- ==================== 1. LAYAR PILIH PAKET TRYOUT ==================== -->
+  <section id="homeScreen" class="screen active">
+    <div class="container-narrow">
+      <div class="brand-header">
+        <div class="brand-badge">PORTAL UJIAN LBB CENDEKIA</div>
+        <h1>E-Cendekia</h1>
+        <p>Pilih paket ujian tryout di bawah ini untuk mulai mengerjakan.</p>
+      </div>
+
+      <div id="packetsList" class="packets-grid">
+        <div class="card muted-text" style="text-align:center;">Memuat daftar paket ujian...</div>
+      </div>
+
+      <!-- Akses Rahasia Panel Admin LBB -->
+      <div class="admin-footer-link">
+        <button type="button" class="btn-link-subtle" onclick="openAdminAuthModal()">Panel Admin LBB</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal Identitas Peserta & Token Ujian -->
+  <div id="studentLoginModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalPacketTitle">Masuk Ujian</h3>
+        <button class="icon-btn" onclick="closeModal('studentLoginModal')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="submitStartExam(event)">
+        <input type="hidden" id="selectedPacketFile" />
+        <div class="form-group">
+          <label>Nama Lengkap Siswa</label>
+          <input type="text" id="stuName" required placeholder="Contoh: Budi Santoso" maxlength="40" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asal Sekolah</label>
+            <input type="text" id="stuSchool" required placeholder="SDN 1 / SMPN 2" maxlength="35" />
+          </div>
+          <div class="form-group">
+            <label>Kelas / No. Peserta</label>
+            <input type="text" id="stuClass" required placeholder="6A / 01-024" maxlength="20" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Token Ujian (Dari Pengawas)</label>
+          <input type="text" id="stuTokenInput" required class="token-input" placeholder="KETIK TOKEN" autocomplete="off" />
+          <small id="tokenErrorMsg" class="error-text hidden" style="text-align:left; margin-top:4px;">Token ujian tidak sesuai. Periksa kembali dari pengawas.</small>
+        </div>
+        <button type="submit" class="btn-primary full-width">
+          <i data-lucide="play"></i> Mulai Mengerjakan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal PIN Admin LBB -->
+  <div id="adminAuthModal" class="modal-backdrop hidden">
+    <div class="modal-card small">
+      <div class="modal-header">
+        <h3>Akses Admin LBB</h3>
+        <button class="icon-btn" onclick="closeModal('adminAuthModal')"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="submitAdminAuth(event)">
+        <div class="form-group">
+          <label>Masukkan 6 angka PIN Admin Pembuat Soal</label>
+          <input type="password" id="adminPinInput" required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" class="pin-input" placeholder="••••••" />
+        </div>
+        <p id="adminPinError" class="error-text hidden">PIN Admin salah.</p>
+        <button type="submit" class="btn-primary full-width">Buka Pembuat Soal</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 2. LAYAR UJIAN (CBT & LJK) ==================== -->
+  <main id="examScreen" class="hidden">
+    <!-- Top Bar Sticky -->
+    <header class="exam-topbar">
+      <div class="exam-user-meta">
+        <strong id="hudStudentName">Nama Siswa</strong>
+        <span id="hudPacketMeta">Tryout SD • SDN 1</span>
+      </div>
+      <div class="exam-timer-box" id="timerBox">
+        <i data-lucide="clock"></i>
+        <span id="examTimerText">00:00</span>
+      </div>
+    </header>
+
+    <!-- Mode Switcher (CBT vs LJK) & Progress Bar -->
+    <div class="exam-toolbar">
+      <div class="mode-switch-group">
+        <button type="button" id="btnModeCBT" class="mode-btn active" onclick="switchExamMode('cbt')">
+          <i data-lucide="file-text"></i> Mode CBT
+        </button>
+        <button type="button" id="btnModeLJK" class="mode-btn" onclick="switchExamMode('ljk')">
+          <i data-lucide="grid"></i> Mode LJK Cepat
+        </button>
+      </div>
+      <span class="progress-pill" id="answeredCountBadge">0 / 0 Terjawab</span>
+    </div>
+
+    <!-- MODE A: TAMPILAN CBT (PER NOMOR + TEKS/GAMBAR + OPSI) -->
+    <section id="cbtViewArea" class="exam-body">
+      <div class="card question-card">
+        <div class="q-header-row">
+          <span class="q-number-badge" id="cbtQuestionNum">Soal No. 1</span>
+          <span class="q-type-badge" id="cbtQuestionType">Pilihan Ganda</span>
+        </div>
+
+        <!-- Gambar Soal (Jika Ada) -->
+        <div id="cbtImageBox" class="q-image-box hidden">
+          <img id="cbtQuestionImg" src="" alt="Gambar Soal" />
+        </div>
+
+        <!-- Teks Soal / Instruksi -->
+        <p id="cbtQuestionText" class="q-text-content"></p>
+
+        <!-- Daftar Pilihan Jawaban -->
+        <div id="cbtOptionsContainer" class="options-stack"></div>
+
+        <!-- Tandai Ragu-Ragu -->
+        <label class="doubt-toggle">
+          <input type="checkbox" id="cbtDoubtCheck" onchange="toggleDoubtCurrent()" />
+          <span>Tandai ragu-ragu pada nomor ini</span>
+        </label>
+      </div>
+
+      <!-- Navigasi Sebelumnya / Selanjutnya -->
+      <div class="cbt-nav-buttons">
+        <button type="button" class="btn-outline" id="btnPrevQ" onclick="navigateQuestion(-1)">
+          <i data-lucide="chevron-left"></i> Sebelumnya
+        </button>
+        <button type="button" class="btn-primary" id="btnNextQ" onclick="navigateQuestion(1)">
+          Selanjutnya <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Grid Navigasi Nomor Soal -->
+      <div class="card nav-grid-card">
+        <div class="nav-grid-header">
+          <h4>Navigasi Nomor Soal</h4>
+          <div class="nav-legend">
+            <span><i class="dot answered"></i> Dijawab</span>
+            <span><i class="dot doubt"></i> Ragu</span>
+            <span><i class="dot empty"></i> Kosong</span>
+          </div>
+        </div>
+        <div id="questionNumberGrid" class="number-grid"></div>
+      </div>
+    </section>
+
+    <!-- MODE B: TAMPILAN LJK CEPAT (SEMUA NOMOR DALAM 1 LEMBAR BULATAN) -->
+    <section id="ljkViewArea" class="exam-body hidden">
+      <div class="card">
+        <div class="ljk-info-bar">
+          <i data-lucide="info"></i>
+          <span>Gunakan Mode LJK jika kamu membaca soal dari lembar cetak PDF dan ingin menginput bulatan jawaban dengan cepat.</span>
+        </div>
+        <div id="ljkRowsContainer" class="ljk-rows-stack"></div>
+      </div>
+    </section>
+
+    <!-- Tombol Kirim Jawaban Sticky Bawah -->
+    <div class="exam-bottom-bar">
+      <button type="button" class="btn-primary full-width btn-lg" onclick="openConfirmSubmitModal()">
+        <i data-lucide="send"></i> Selesai & Kirim Jawaban
+      </button>
+    </div>
+  </main>
+
+  <!-- Modal Konfirmasi Kirim Jawaban -->
+  <div id="confirmSubmitModal" class="modal-backdrop hidden">
+    <div class="modal-card small">
+      <div class="modal-header">
+        <h3>Kirim Jawaban Ujian?</h3>
+        <button class="icon-btn" onclick="closeModal('confirmSubmitModal')"><i data-lucide="x"></i></button>
+      </div>
+      <p id="submitSummaryText" class="muted-text" style="margin-bottom:16px;"></p>
+      <div class="form-row">
+        <button type="button" class="btn-outline" onclick="closeModal('confirmSubmitModal')">Cek Lagi</button>
+        <button type="button" class="btn-primary" id="btnConfirmSend" onclick="finalizeAndSubmitExam()">Ya, Kirim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 3. LAYAR HASIL UJIAN & STATUS KIRIM ==================== -->
+  <section id="resultScreen" class="screen hidden">
+    <div class="container-narrow">
+      <div class="result-hero-card">
+        <span class="result-badge">UJIAN SELESAI — E-CENDEKIA</span>
+        <h2 id="resStudentName">Budi Santoso</h2>
+        <p id="resStudentMeta">SDN 1 • Kelas 6A</p>
+
+        <div class="score-circle-box">
+          <span class="score-label">SKOR AKHIR</span>
+          <div class="score-big" id="resTotalScore">0</div>
+          <span class="score-sub" id="resMaxScore">dari 100 poin</span>
+        </div>
+
+        <div id="syncStatusBox" class="sync-status-banner">
+          Mengirim hasil ke server LBB...
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ringkasan Pengerjaan</h3>
+        <div class="res-stats-row">
+          <div>
+            <strong id="resAnswered">0</strong>
+            <span>Terjawab</span>
+          </div>
+          <div>
+            <strong id="resCorrect">0</strong>
+            <span>Benar</span>
+          </div>
+          <div>
+            <strong id="resWrong">0</strong>
+            <span>Salah / Kosong</span>
+          </div>
+        </div>
+        <button type="button" id="btnRetrySync" class="btn-outline full-width hidden" style="margin-top:12px;" onclick="retrySendToGoogleSheets()">
+          <i data-lucide="refresh-cw"></i> Kirim Ulang ke Google Sheets
+        </button>
+      </div>
+
+      <button type="button" class="btn-primary full-width" onclick="backToHome()">
+        Kembali ke Halaman Utama
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== 4. PANEL ADMIN PEMBUAT SOAL LBB ==================== -->
+  <section id="adminScreen" class="screen hidden">
+    <div class="container-admin">
+      <header class="admin-topbar">
+        <div>
+          <h2>Panel Admin E-Cendekia</h2>
+          <p class="muted-text">Susun paket tryout, unggah gambar soal, lalu ekspor ke 1 file paket siap pakai.</p>
+        </div>
+        <button type="button" class="btn-outline-sm" onclick="exitAdminPanel()">
+          <i data-lucide="log-out"></i> Keluar
+        </button>
+      </header>
+
+      <!-- Import Paket Lama untuk Diedit -->
+      <div class="card">
+        <div class="admin-import-row">
+          <div>
+            <h4>Edit Paket Soal yang Sudah Ada?</h4>
+            <p class="muted-text">Muat ulang file <code>.json</code> lama jika ingin merevisi soal atau kunci jawaban.</p>
+          </div>
+          <label class="btn-outline-sm" style="cursor:pointer;">
+            <i data-lucide="upload"></i> Muat File .JSON
+            <input type="file" accept=".json" style="display:none;" onchange="importPacketJson(event)" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Pengaturan Umum Paket Tryout -->
+      <div class="card">
+        <h3>1. Pengaturan Paket Tryout</h3>
+        <div class="form-row" style="margin-top:12px;">
+          <div class="form-group">
+            <label>Judul Paket Tryout</label>
+            <input type="text" id="admTitle" placeholder="Contoh: Tryout SD Kelas 6 - Paket A" />
+          </div>
+          <div class="form-group">
+            <label>Jenjang / Keterangan</label>
+            <input type="text" id="admSubtitle" placeholder="Matematika & IPA • 40 Soal" />
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Durasi Ujian (Menit)</label>
+            <input type="number" id="admDuration" value="60" min="5" max="240" />
+          </div>
+          <div class="form-group">
+            <label>Jumlah Opsi Jawaban</label>
+            <select id="admOptionCount" onchange="renderAdminQuestions()">
+              <option value="3">3 Opsi (A – C)</option>
+              <option value="4" selected>4 Opsi (A – D)</option>
+              <option value="5">5 Opsi (A – E)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Token Masuk Ujian</label>
+            <div class="token-gen-row">
+              <input type="text" id="admToken" value="TRYOUT26" maxlength="12" style="text-transform:uppercase;" />
+              <button type="button" class="btn-secondary-sm" onclick="generateRandomToken()" title="Acak Token">Acak</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Aturan Skor Soal MCMA (Jawaban Ganda)</label>
+          <select id="admMcmaRule">
+            <option value="all_or_nothing">Benar Sempurna (Wajib benar semua baru dapat poin)</option>
+            <option value="partial">Poin Parsial (Proporsional sesuai jumlah pilihan benar)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Daftar Editor Soal -->
+      <div class="card">
+        <div class="admin-q-header">
+          <div>
+            <h3>2. Daftar Butir Soal (<span id="admTotalQCount">0</span> Soal)</h3>
+            <p class="muted-text">Teks soal boleh dikosongkan jika siswa membaca soal dari lembar cetak PDF.</p>
+          </div>
+          <div class="admin-add-btns">
+            <button type="button" class="btn-outline-sm" onclick="addBulkQuestions(5)">+ 5 Nomor</button>
+            <button type="button" class="btn-primary-sm" onclick="addSingleQuestion()">+ Tambah 1 Soal</button>
+          </div>
+        </div>
+
+        <div id="adminQuestionsContainer" class="admin-q-list"></div>
+      </div>
+
+      <!-- Tombol Ekspor Paket JSON -->
+      <div class="card export-box">
+        <h3>3. Selesai Menyusun Soal?</h3>
+        <p class="muted-text" style="margin-bottom:12px;">Unduh file paket soal di bawah ini, lalu kirimkan file tersebut ke developer untuk ditayangkan ke link ujian.</p>
+        <button type="button" class="btn-primary full-width btn-lg" onclick="exportPacketJson()">
+          <i data-lucide="download"></i> Download Paket Soal (.JSON)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>

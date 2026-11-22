@@ -1,0 +1,35 @@
+{
+  "title": "Tryout SD Kelas 6 — Simulasi",
+  "subtitle": "Matematika & IPA • 4 Opsi + MCMA",
+  "duration": 30,
+  "optionCount": 4,
+  "token": "SD2026",
+  "mcmaRule": "all_or_nothing",
+  "sheetUrl": "",
+  "questions": [
+    {
+      "type": "single",
+      "text": "Hasil dari 125 + 75 × 2 adalah...",
+      "image": "",
+      "options": ["400", "275", "300", "250"],
+      "answer": ["B"],
+      "points": 30
+    },
+    {
+      "type": "mcma",
+      "text": "Pilihlah 2 bilangan prima di bawah ini! (Jawaban lebih dari satu)",
+      "image": "",
+      "options": ["9", "11", "15", "17"],
+      "answer": ["B", "D"],
+      "points": 40
+    },
+    {
+      "type": "single",
+      "text": "Perubahan wujud benda dari cair menjadi gas disebut...",
+      "image": "",
+      "options": ["Membeku", "Mencair", "Menguap", "Menyublim"],
+      "answer": ["C"],
+      "points": 30
+    }
+  ]
+}   
