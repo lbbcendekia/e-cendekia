@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <link rel="stylesheet" href="css/style.css?v=6" />
+  <link rel="stylesheet" href="css/style.css?v=7" />
 </head>
 <body>
 
@@ -249,7 +249,7 @@
       <header class="admin-topbar">
         <div>
           <h2>Panel Admin E-Cendekia</h2>
-          <p class="muted-text">Susun paket tryout, unggah gambar soal, lalu ekspor ke 1 file paket siap pakai.</p>
+          <p class="muted-text">Susun paket tryout, unggah gambar soal, lalu kirim atau unduh file paket.</p>
         </div>
         <button type="button" class="btn-outline-sm" onclick="exitAdminPanel()">
           <i data-lucide="log-out"></i> Keluar
@@ -331,17 +331,22 @@
         <div id="adminQuestionsContainer" class="admin-q-list"></div>
       </div>
 
-      <!-- Tombol Ekspor Paket JSON -->
+      <!-- Tombol Ekspor & Kirim Paket JSON -->
       <div class="card export-box">
         <h3>3. Selesai Menyusun Soal?</h3>
-        <p class="muted-text" style="margin-bottom:12px;">Unduh file paket soal di bawah ini, lalu kirimkan file tersebut ke developer untuk ditayangkan ke link ujian.</p>
-        <button type="button" class="btn-primary full-width btn-lg" onclick="exportPacketJson()">
-          <i data-lucide="download"></i> Download Paket Soal (.JSON)
-        </button>
+        <p class="muted-text" style="margin-bottom:12px;">Kirim paket soal langsung ke Google Drive pusat atau unduh file cadangan ke perangkat.</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button type="button" id="btnSendPacketCloud" class="btn-primary full-width btn-lg" onclick="sendPacketToAdminDrive()">
+            <i data-lucide="cloud-upload"></i> Kirim Paket Soal ke Admin (Otomatis)
+          </button>
+          <button type="button" id="btnDownloadPacketLocal" class="btn-outline full-width" onclick="exportPacketJson()">
+            <i data-lucide="download"></i> Download Cadangan (.JSON)
+          </button>
+        </div>
       </div>
     </div>
   </section>
 
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>
