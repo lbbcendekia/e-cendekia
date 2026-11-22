@@ -243,7 +243,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: background-color 0.2s, opacity 0.15s, transform 0.1s;
 }
 
 .btn-primary:active { transform: scale(0.98); }
@@ -278,6 +278,7 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .btn-outline-sm {
@@ -303,6 +304,13 @@ html, body {
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.btn-success-state {
+  background-color: var(--accent-green) !important;
+  border-color: var(--accent-green) !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
 }
 
 .full-width { width: 100%; }
