@@ -9,7 +9,6 @@ let studentInfo = null;
 let studentAnswers = {}; // { [qIndex]: ['A'] atau ['A','C'] }
 let studentDoubts = {};  // { [qIndex]: true }
 let currentQIndex = 0;
-let examMode = 'cbt';
 let timerInterval = null;
 let remainingSeconds = 0;
 let lastResultPayload = null;
@@ -102,13 +101,12 @@ async function submitStartExam(e) {
   }
 }
 
-// ==================== 2. SESI UJIAN (CBT & LJK + AUTO-SAVE) ====================
+// ==================== 2. SESI UJIAN CBT (DENGAN AUTO-SAVE) ====================
 function getStorageBackupKey() {
   return `tryout_autosave_${activePacket.title}_${studentInfo.name}_${studentInfo.stuClass}`;
 }
 
 function startExamSession() {
-  // Pulihkan jawaban jika browser tidak sengaja tertutup / refresh
   const savedRaw = localStorage.getItem(getStorageBackupKey());
   if (savedRaw) {
     try {
@@ -134,7 +132,9 @@ function startExamSession() {
   document.getElementById('homeScreen').classList.add('hidden');
   document.getElementById('examScreen').classList.remove('hidden');
 
-  switchExamMode('cbt');
+  updateAnsweredBadge();
+  renderCBTQuestion();
+  renderNumberGrid();
   startCountdownTimer();
   refreshIcons();
 }
@@ -174,23 +174,6 @@ function updateTimerDisplay() {
   const box = document.getElementById('timerBox');
   if (remainingSeconds <= 300) box.classList.add('warning');
   else box.classList.remove('warning');
-}
-
-function switchExamMode(mode) {
-  examMode = mode;
-  document.getElementById('btnModeCBT').classList.toggle('active', mode === 'cbt');
-  document.getElementById('btnModeLJK').classList.toggle('active', mode === 'ljk');
-
-  document.getElementById('cbtViewArea').classList.toggle('hidden', mode !== 'cbt');
-  document.getElementById('ljkViewArea').classList.toggle('hidden', mode !== 'ljk');
-
-  updateAnsweredBadge();
-  if (mode === 'cbt') {
-    renderCBTQuestion();
-    renderNumberGrid();
-  } else {
-    renderLJKSheet();
-  }
 }
 
 function updateAnsweredBadge() {
@@ -240,6 +223,14 @@ function renderCBTQuestion() {
   document.getElementById('cbtDoubtCheck').checked = !!studentDoubts[currentQIndex];
   document.getElementById('btnPrevQ').disabled = currentQIndex === 0;
   document.getElementById('btnNextQ').disabled = currentQIndex === total - 1;
+
+  // Tampilkan tombol "Selesai & Kirim Jawaban" HANYA saat berada di nomor soal terakhir
+  const bottomBar = document.getElementById('examBottomBar');
+  if (currentQIndex === total - 1) {
+    bottomBar.classList.remove('hidden');
+  } else {
+    bottomBar.classList.add('hidden');
+  }
 }
 
 function selectAnswer(qIdx, letter, type) {
@@ -259,13 +250,8 @@ function selectAnswer(qIdx, letter, type) {
   studentAnswers[qIdx] = current;
   saveProgressLocally();
   updateAnsweredBadge();
-
-  if (examMode === 'cbt') {
-    renderCBTQuestion();
-    renderNumberGrid();
-  } else {
-    renderLJKSheet();
-  }
+  renderCBTQuestion();
+  renderNumberGrid();
 }
 
 function toggleDoubtCurrent() {
@@ -305,33 +291,6 @@ function renderNumberGrid() {
       renderNumberGrid();
     };
     grid.appendChild(btn);
-  });
-}
-
-function renderLJKSheet() {
-  const container = document.getElementById('ljkRowsContainer');
-  container.innerHTML = '';
-  const letters = OPTION_LETTERS.slice(0, activePacket.optionCount || 4);
-
-  activePacket.questions.forEach((q, idx) => {
-    const selectedArr = studentAnswers[idx] || [];
-    const row = document.createElement('div');
-    row.className = 'ljk-row';
-
-    const bubblesHtml = letters.map(letter => {
-      const activeCls = selectedArr.includes(letter) ? 'selected' : '';
-      const shapeCls = q.type === 'mcma' ? 'mcma' : '';
-      return `<button type="button" class="ljk-bubble ${shapeCls} ${activeCls}" onclick="selectAnswer(${idx}, '${letter}', '${q.type}')">${letter}</button>`;
-    }).join('');
-
-    row.innerHTML = `
-      <div class="ljk-row-num">
-        No. ${idx + 1}
-        ${q.type === 'mcma' ? '<small>MCMA</small>' : ''}
-      </div>
-      <div class="ljk-bubbles">${bubblesHtml}</div>
-    `;
-    container.appendChild(row);
   });
 }
 
@@ -432,37 +391,31 @@ async function finalizeAndSubmitExam() {
   await sendPayloadWithRetry(lastResultPayload);
 }
 
-// Auto-retry dengan jeda acak (Jitter) agar tahan 1000 user bersamaan
+// Kirim hasil ke Google Sheets secara senyap di belakang layar (tanpa menampilkan URL/status teknis ke siswa)
 async function sendPayloadWithRetry(payload, maxRetries = 4) {
   const scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
-  const statusBox = document.getElementById('syncStatusBox');
   const retryBtn = document.getElementById('btnRetrySync');
 
   if (!scriptUrl || scriptUrl.includes('PASTE_URL')) {
-    statusBox.innerText = 'Mode Simulasi Lokal (URL Google Sheets belum dipasang).';
     return;
   }
 
-  retryBtn.classList.add('hidden');
+  if (retryBtn) retryBtn.classList.add('hidden');
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      statusBox.innerText = `Mengirim hasil ke rekap LBB (Percobaan ${attempt}/${maxRetries})...`;
       await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
-
-      statusBox.innerText = '✅ Hasil ujian berhasil tercatat di Google Sheets LBB!';
       return;
     } catch (err) {
       if (attempt < maxRetries) {
         const jitterMs = 800 * attempt + Math.floor(Math.random() * 1200);
         await new Promise(r => setTimeout(r, jitterMs));
-      } else {
-        statusBox.innerText = '⚠️ Sinyal sibuk. Klik tombol Kirim Ulang di bawah ini.';
+      } else if (retryBtn) {
         retryBtn.classList.remove('hidden');
       }
     }

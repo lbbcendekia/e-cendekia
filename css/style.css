@@ -38,7 +38,7 @@ html, body {
 .container-narrow {
   max-width: 540px;
   margin: 0 auto;
-  padding: 32px 18px 60px;
+  padding: 28px 18px 60px;
 }
 
 .container-admin {
@@ -47,23 +47,76 @@ html, body {
   padding: 20px 16px 60px;
 }
 
-/* ==================== HEADER & BRAND ==================== */
+/* ==================== HEADER & LOGO ==================== */
 .brand-header {
   text-align: center;
-  margin-bottom: 26px;
+  margin-bottom: 24px;
+}
+
+.brand-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;    /* Menurunkan posisi logo dari atas layar */
+  margin-bottom: 50px; /* Jarak ke badge di bawahnya */
+}
+
+.brand-logo-img {
+  max-height: 52px; /* Ukuran tinggi logo diperkecil dari 76px ke 52px */
+  width: auto;
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.logo-fallback-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1.5px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 14px;
+  text-align: left;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+.logo-fallback-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.lbb-small {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.lbb-big {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+}
+
+.lbb-motto {
+  font-size: 0.54rem;
+  font-style: italic;
+  color: var(--primary);
+  margin-top: 2px;
 }
 
 .brand-badge {
   display: inline-block;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 0.72rem;
+  font-size: 0.92rem;       /* Diperbesar dari 0.72rem (~11.5px) menjadi ~14.7px */
   font-weight: 800;
-  letter-spacing: 1px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  border: 1px solid rgba(132, 0, 0, 0.3);
-  margin-bottom: 10px;
+  letter-spacing: 1.2px;
+  padding: 8px 18px;        /* Ruang dalam kapsul diperbesar agar seimbang */
+  border-radius: 24px;
+  border: 1.5px solid rgba(132, 0, 0, 0.35);
+  margin-bottom: 12px;
 }
 
 .brand-header h1 {
@@ -180,6 +233,12 @@ html, body {
 }
 
 .btn-primary:active { transform: scale(0.98); }
+
+.btn-primary:disabled,
+.btn-outline:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btn-primary-sm {
   background: var(--primary);
@@ -343,11 +402,11 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 
-/* ==================== LAYAR UJIAN (CBT & LJK) ==================== */
+/* ==================== LAYAR UJIAN CBT ==================== */
 #examScreen {
   max-width: 680px;
   margin: 0 auto;
-  padding-bottom: 84px;
+  padding-bottom: 86px;
 }
 
 .exam-topbar {
@@ -398,31 +457,10 @@ input:focus, select:focus, textarea:focus {
   padding: 12px 16px 4px;
 }
 
-.mode-switch-group {
-  display: inline-flex;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  padding: 3px;
-  border-radius: 10px;
-}
-
-.mode-btn {
-  background: none;
-  border: none;
-  padding: 6px 11px;
-  border-radius: 8px;
-  font-size: 0.76rem;
+.exam-mode-label {
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.mode-btn.active {
-  background: var(--primary);
-  color: #ffffff;
 }
 
 .progress-pill {
@@ -630,76 +668,6 @@ input:focus, select:focus, textarea:focus {
 .num-btn.current {
   outline: 2.5px solid #1c1818;
   outline-offset: 1px;
-}
-
-/* ==================== MODE LJK CEPAT ==================== */
-.ljk-info-bar {
-  background: var(--primary-soft);
-  color: var(--primary);
-  padding: 9px 11px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.ljk-rows-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.ljk-row {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ljk-row-num {
-  font-weight: 800;
-  font-size: 0.88rem;
-  min-width: 58px;
-  color: var(--text-main);
-}
-
-.ljk-row-num small {
-  display: block;
-  font-size: 0.65rem;
-  color: var(--primary);
-}
-
-.ljk-bubbles {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.ljk-bubble {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1.5px solid var(--primary);
-  background: #ffffff;
-  color: var(--primary);
-  font-weight: 800;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.ljk-bubble.mcma {
-  border-radius: 7px;
-}
-
-.ljk-bubble.selected {
-  background: var(--primary);
-  color: #ffffff;
 }
 
 .exam-bottom-bar {
