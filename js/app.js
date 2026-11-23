@@ -709,19 +709,43 @@ async function sendPacketToAdminDrive() {
   btn.disabled = true;
   btn.innerText = 'Mengirim...';
 
+  const payloadObj = {
+    action: 'upload_packet',
+    packetTitle: packetObj.title,
+    questionCount: adminQuestions.length,
+    fileName: fileName,
+    content: JSON.stringify(packetObj, null, 2)
+  };
+
+  const formBody = new URLSearchParams();
+  formBody.append('payload', JSON.stringify(payloadObj));
+
   try {
     await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'upload_packet',
-        packetTitle: packetObj.title,
-        questionCount: adminQuestions.length,
-        fileName: fileName,
-        content: JSON.stringify(packetObj, null, 2)
-      })
+      body: formBody
     });
+
+    btn.classList.add('btn-success-state');
+    btn.innerHTML = `<i data-lucide="check-circle"></i> Terkirim!`;
+    refreshIcons();
+
+    setTimeout(() => {
+      btn.classList.remove('btn-success-state');
+      btn.disabled = false;
+      btn.innerHTML = oriHtml;
+      delete btn.dataset.animating;
+      refreshIcons();
+    }, 3000);
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = oriHtml;
+    delete btn.dataset.animating;
+    refreshIcons();
+    alert('Gagal mengirim ke Google Drive. Gunakan tombol Download Cadangan (.JSON) di bawahnya.');
+  }
+} // <-- kurung kurawal tutup terakhir untuk async function sendPacketToAdminDrive()
 
     // Ubah tampilan tombol menjadi hijau bertuliskan "Terkirim!" selama 3 detik
     btn.classList.add('btn-success-state');
