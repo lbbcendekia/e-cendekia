@@ -717,15 +717,25 @@ async function sendPacketToAdminDrive() {
     content: JSON.stringify(packetObj, null, 2)
   };
 
-  const formBody = new URLSearchParams();
-  formBody.append('payload', JSON.stringify(payloadObj));
-
   try {
-    await fetch(scriptUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formBody
-    });
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = scriptUrl;
+    form.target = 'hiddenFrame';
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'payload';
+    input.value = JSON.stringify(payloadObj);
+
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+
+    setTimeout(() => {
+      form.remove();
+    }, 1000);
 
     // Ubah tampilan tombol menjadi hijau bertuliskan "Terkirim!" selama 3 detik
     btn.classList.add('btn-success-state');
