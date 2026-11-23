@@ -745,7 +745,7 @@ async function sendPacketToAdminDrive() {
     refreshIcons();
     alert('Gagal mengirim ke Google Drive. Gunakan tombol Download Cadangan (.JSON) di bawahnya.');
   }
-} // <-- kurung kurawal tutup terakhir untuk async function sendPacketToAdminDrive()
+}
 
     // Ubah tampilan tombol menjadi hijau bertuliskan "Terkirim!" selama 3 detik
     btn.classList.add('btn-success-state');
