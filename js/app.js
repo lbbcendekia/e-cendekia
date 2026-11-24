@@ -6,7 +6,7 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 let availablePackets = [];
 let activePacket = null;
 let studentInfo = null;
-let studentAnswers = {}; // { [qIndex]: ['A'] atau ['A','C'] }
+let studentAnswers = {}; // Single/MCMA: ['A'] atau ['A','C'] | Category: ['Benar', 'Salah', 'Benar']
 let studentDoubts = {};  // { [qIndex]: true }
 let currentQIndex = 0;
 let timerInterval = null;
@@ -23,6 +23,16 @@ function refreshIcons() {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.add('hidden');
+}
+
+// Helper: Cek apakah sebuah nomor soal sudah terjawab lengkap
+function isQuestionAnswered(q, ans) {
+  if (!ans || !Array.isArray(ans)) return false;
+  if (q.type === 'category') {
+    const stmtCount = (q.statements || []).length;
+    return stmtCount > 0 && ans.length === stmtCount && ans.every(v => v !== null && v !== undefined && v !== '');
+  }
+  return ans.length > 0;
 }
 
 // ==================== 1. MUAT DAFTAR PAKET UJIAN ====================
@@ -178,7 +188,7 @@ function updateTimerDisplay() {
 
 function updateAnsweredBadge() {
   const total = activePacket.questions.length;
-  const answered = Object.keys(studentAnswers).filter(k => studentAnswers[k] && studentAnswers[k].length > 0).length;
+  const answered = activePacket.questions.filter((q, idx) => isQuestionAnswered(q, studentAnswers[idx])).length;
   document.getElementById('answeredCountBadge').innerText = `${answered} / ${total} Terjawab`;
 }
 
@@ -188,8 +198,14 @@ function renderCBTQuestion() {
   const letters = OPTION_LETTERS.slice(0, activePacket.optionCount || 4);
 
   document.getElementById('cbtQuestionNum').innerText = `Soal No. ${currentQIndex + 1} dari ${total}`;
-  document.getElementById('cbtQuestionType').innerText =
-    q.type === 'mcma' ? 'MCMA (Pilih Lebih dari 1)' : 'Pilihan Ganda';
+
+  if (q.type === 'mcma') {
+    document.getElementById('cbtQuestionType').innerText = 'MCMA (Pilih Lebih dari 1)';
+  } else if (q.type === 'category') {
+    document.getElementById('cbtQuestionType').innerText = 'Pilihan Kategori';
+  } else {
+    document.getElementById('cbtQuestionType').innerText = 'Pilihan Ganda';
+  }
 
   const imgBox = document.getElementById('cbtImageBox');
   if (q.image) {
@@ -204,21 +220,72 @@ function renderCBTQuestion() {
 
   const optContainer = document.getElementById('cbtOptionsContainer');
   optContainer.innerHTML = '';
-  const selectedArr = studentAnswers[currentQIndex] || [];
 
-  letters.forEach((letter, idx) => {
-    const isSelected = selectedArr.includes(letter);
-    const optText = (q.options && q.options[idx]) ? q.options[idx] : `Pilihan ${letter}`;
+  if (q.type === 'category') {
+    // Render Tabel Pilihan Berdasarkan Kategori (misal: Benar / Salah)
+    const categories = (q.categories && q.categories.length) ? q.categories : ['Benar', 'Salah'];
+    const statements = q.statements || [];
+    const selectedArr = studentAnswers[currentQIndex] || [];
 
-    const div = document.createElement('div');
-    div.className = `option-item ${isSelected ? 'selected' : ''}`;
-    div.onclick = () => selectAnswer(currentQIndex, letter, q.type);
-    div.innerHTML = `
-      <div class="opt-bullet ${q.type === 'mcma' ? 'mcma-box' : ''}">${letter}</div>
-      <div class="opt-label-text">${optText}</div>
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'cat-table-wrap';
+
+    const headerCols = categories.map(cat => `<th>${cat}</th>`).join('');
+    const rowsHtml = statements.map((stmt, sIdx) => {
+      const chosenCat = selectedArr[sIdx] || '';
+      const cellsHtml = categories.map(cat => {
+        const isSel = chosenCat === cat;
+        return `
+          <td class="cat-choice-cell">
+            <button type="button"
+              class="cat-radio-btn ${isSel ? 'selected' : ''}"
+              aria-label="${cat}"
+              onclick="selectCategoryAnswer(${currentQIndex}, ${sIdx}, '${cat.replace(/'/g, "\\'")}')">
+            </button>
+          </td>
+        `;
+      }).join('');
+
+      return `
+        <tr>
+          <td>${stmt || `Pernyataan ${sIdx + 1}`}</td>
+          ${cellsHtml}
+        </tr>
+      `;
+    }).join('');
+
+    tableWrap.innerHTML = `
+      <table class="cat-table">
+        <thead>
+          <tr>
+            <th>Pernyataan</th>
+            ${headerCols}
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
     `;
-    optContainer.appendChild(div);
-  });
+    optContainer.appendChild(tableWrap);
+  } else {
+    // Render Pilihan Ganda (Single) & MCMA
+    const selectedArr = studentAnswers[currentQIndex] || [];
+
+    letters.forEach((letter, idx) => {
+      const isSelected = selectedArr.includes(letter);
+      const optText = (q.options && q.options[idx]) ? q.options[idx] : `Pilihan ${letter}`;
+
+      const div = document.createElement('div');
+      div.className = `option-item ${isSelected ? 'selected' : ''}`;
+      div.onclick = () => selectAnswer(currentQIndex, letter, q.type);
+      div.innerHTML = `
+        <div class="opt-bullet ${q.type === 'mcma' ? 'mcma-box' : ''}">${letter}</div>
+        <div class="opt-label-text">${optText}</div>
+      `;
+      optContainer.appendChild(div);
+    });
+  }
 
   document.getElementById('cbtDoubtCheck').checked = !!studentDoubts[currentQIndex];
   document.getElementById('btnPrevQ').disabled = currentQIndex === 0;
@@ -254,6 +321,21 @@ function selectAnswer(qIdx, letter, type) {
   renderNumberGrid();
 }
 
+function selectCategoryAnswer(qIdx, stmtIdx, chosenCategory) {
+  const q = activePacket.questions[qIdx];
+  const stmtCount = (q.statements || []).length;
+  let current = Array.isArray(studentAnswers[qIdx]) ? [...studentAnswers[qIdx]] : new Array(stmtCount).fill('');
+
+  while (current.length < stmtCount) current.push('');
+  current[stmtIdx] = chosenCategory;
+
+  studentAnswers[qIdx] = current;
+  saveProgressLocally();
+  updateAnsweredBadge();
+  renderCBTQuestion();
+  renderNumberGrid();
+}
+
 function toggleDoubtCurrent() {
   studentDoubts[currentQIndex] = document.getElementById('cbtDoubtCheck').checked;
   saveProgressLocally();
@@ -273,8 +355,8 @@ function renderNumberGrid() {
   const grid = document.getElementById('questionNumberGrid');
   grid.innerHTML = '';
 
-  activePacket.questions.forEach((_, idx) => {
-    const hasAns = studentAnswers[idx] && studentAnswers[idx].length > 0;
+  activePacket.questions.forEach((q, idx) => {
+    const hasAns = isQuestionAnswered(q, studentAnswers[idx]);
     const isDoubt = !!studentDoubts[idx];
 
     const btn = document.createElement('button');
@@ -297,12 +379,12 @@ function renderNumberGrid() {
 // ==================== 3. PENILAIAN OTOMATIS & KIRIM KE GOOGLE SHEETS ====================
 function openConfirmSubmitModal() {
   const total = activePacket.questions.length;
-  const answered = Object.keys(studentAnswers).filter(k => studentAnswers[k] && studentAnswers[k].length > 0).length;
+  const answered = activePacket.questions.filter((q, idx) => isQuestionAnswered(q, studentAnswers[idx])).length;
   const unanswered = total - answered;
 
   document.getElementById('submitSummaryText').innerText =
     unanswered > 0
-      ? `Kamu sudah menjawab ${answered} dari ${total} soal. Masih ada ${unanswered} soal kosong. Yakin ingin mengirim sekarang?`
+      ? `Kamu sudah menjawab ${answered} dari ${total} soal. Masih ada ${unanswered} soal kosong / belum lengkap. Yakin ingin mengirim sekarang?`
       : `Semua ${total} soal sudah terjawab. Kirim jawaban sekarang?`;
 
   document.getElementById('confirmSubmitModal').classList.remove('hidden');
@@ -322,13 +404,37 @@ function calculateExamScore() {
     const pts = parseFloat(q.points) || 1;
     maxScore += pts;
 
-    const userAns = (studentAnswers[idx] || []).slice().sort();
-    const keyAns = (q.answer || []).slice().sort();
+    if (isQuestionAnswered(q, studentAnswers[idx])) answeredCount++;
 
-    if (userAns.length > 0) answeredCount++;
-    rawAnswersList.push(`${idx + 1}:${userAns.join('+') || '-'}`);
+    if (q.type === 'category') {
+      const userArr = studentAnswers[idx] || [];
+      const keyArr = q.answer || [];
+      const stmtCount = keyArr.length;
 
-    if (q.type === 'mcma') {
+      const shortCode = Array.from({ length: stmtCount }, (_, i) => {
+        const val = userArr[i] || '-';
+        return val === '-' ? '-' : val.charAt(0).toUpperCase();
+      }).join(',');
+      rawAnswersList.push(`${idx + 1}:${shortCode || '-'}`);
+
+      if (stmtCount > 0) {
+        let matchedRows = 0;
+        for (let i = 0; i < stmtCount; i++) {
+          if (userArr[i] && userArr[i] === keyArr[i]) matchedRows++;
+        }
+
+        if (matchedRows === stmtCount) {
+          totalScore += pts;
+          correctCount++;
+        } else if (mcmaRule === 'partial' && matchedRows > 0) {
+          totalScore += pts * (matchedRows / stmtCount);
+        }
+      }
+    } else if (q.type === 'mcma') {
+      const userAns = (studentAnswers[idx] || []).slice().sort();
+      const keyAns = (q.answer || []).slice().sort();
+      rawAnswersList.push(`${idx + 1}:${userAns.join('+') || '-'}`);
+
       const isExact = userAns.length === keyAns.length && userAns.every((v, i) => v === keyAns[i]);
       if (isExact) {
         totalScore += pts;
@@ -341,6 +447,10 @@ function calculateExamScore() {
         }
       }
     } else {
+      const userAns = (studentAnswers[idx] || []);
+      const keyAns = (q.answer || []);
+      rawAnswersList.push(`${idx + 1}:${userAns[0] || '-'}`);
+
       if (userAns[0] && userAns[0] === keyAns[0]) {
         totalScore += pts;
         correctCount++;
@@ -391,7 +501,7 @@ async function finalizeAndSubmitExam() {
   await sendPayloadWithRetry(lastResultPayload);
 }
 
-// Kirim hasil ke Google Sheets secara senyap di belakang layar (tanpa menampilkan URL/status teknis ke siswa)
+// Kirim hasil ke Google Sheets secara senyap di belakang layar
 async function sendPayloadWithRetry(payload, maxRetries = 4) {
   const scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
   const retryBtn = document.getElementById('btnRetrySync');
@@ -476,28 +586,27 @@ function generateRandomToken() {
   document.getElementById('admToken').value = token;
 }
 
-function addSingleQuestion() {
-  adminQuestions.push({
+function createEmptyQuestion() {
+  return {
     type: 'single',
     text: '',
     image: '',
     options: ['', '', '', '', ''],
+    categories: ['Benar', 'Salah'],
+    statements: ['', '', ''],
     answer: ['A'],
     points: 2.5
-  });
+  };
+}
+
+function addSingleQuestion() {
+  adminQuestions.push(createEmptyQuestion());
   renderAdminQuestions();
 }
 
 function addBulkQuestions(count) {
   for (let i = 0; i < count; i++) {
-    adminQuestions.push({
-      type: 'single',
-      text: '',
-      image: '',
-      options: ['', '', '', '', ''],
-      answer: ['A'],
-      points: 2.5
-    });
+    adminQuestions.push(createEmptyQuestion());
   }
   renderAdminQuestions();
 }
@@ -519,17 +628,68 @@ function renderAdminQuestions() {
     const item = document.createElement('div');
     item.className = 'admin-q-item';
 
-    const keysHtml = letters.map(l => {
-      const isAct = q.answer.includes(l) ? 'active' : '';
-      return `<button type="button" class="key-chip ${isAct}" onclick="toggleAdminAnswerKey(${idx}, '${l}')">${l}</button>`;
-    }).join('');
+    let answerSectionHtml = '';
 
-    const optInputsHtml = letters.map((l, optIdx) => `
-      <input type="text" placeholder="Teks opsi ${l} (opsional jika soal cetak)"
-        value="${q.options[optIdx] || ''}"
-        onchange="adminQuestions[${idx}].options[${optIdx}] = this.value"
-        style="margin-top:6px;" />
-    `).join('');
+    if (q.type === 'category') {
+      const cats = (q.categories && q.categories.length) ? q.categories : ['Benar', 'Salah'];
+      const stmts = (q.statements && q.statements.length) ? q.statements : ['', '', ''];
+
+      const stmtRowsHtml = stmts.map((st, sIdx) => {
+        const chosenKey = q.answer[sIdx] || cats[0];
+        const catButtons = cats.map(c => {
+          const isAct = chosenKey === c ? 'active' : '';
+          return `<button type="button" class="cat-key-chip ${isAct}" onclick="setAdminCategoryKey(${idx}, ${sIdx}, '${c.replace(/'/g, "\\'")}')">${c}</button>`;
+        }).join('');
+
+        return `
+          <div class="admin-cat-row">
+            <input type="text" placeholder="Pernyataan ${sIdx + 1}..."
+              value="${st.replace(/"/g, '&quot;')}"
+              onchange="adminQuestions[${idx}].statements[${sIdx}] = this.value" />
+            <div class="admin-cat-keys">${catButtons}</div>
+            ${stmts.length > 1 ? `<button type="button" class="btn-del-q" onclick="removeAdminStatement(${idx}, ${sIdx})" title="Hapus Baris">✕</button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      answerSectionHtml = `
+        <div class="form-group">
+          <label>Label Kategori Kolom (Pisahkan dengan koma, contoh: Benar, Salah)</label>
+          <input type="text" value="${cats.join(', ')}" onchange="updateAdminCategories(${idx}, this.value)" />
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="margin-bottom:0;">Daftar Pernyataan & Kunci Jawaban</label>
+            <button type="button" class="btn-outline-sm" onclick="addAdminStatement(${idx})">+ Baris Pernyataan</button>
+          </div>
+          ${stmtRowsHtml}
+        </div>
+      `;
+    } else {
+      const keysHtml = letters.map(l => {
+        const isAct = q.answer.includes(l) ? 'active' : '';
+        return `<button type="button" class="key-chip ${isAct}" onclick="toggleAdminAnswerKey(${idx}, '${l}')">${l}</button>`;
+      }).join('');
+
+      const optInputsHtml = letters.map((l, optIdx) => `
+        <input type="text" placeholder="Teks opsi ${l} (opsional jika soal cetak)"
+          value="${(q.options[optIdx] || '').replace(/"/g, '&quot;')}"
+          onchange="adminQuestions[${idx}].options[${optIdx}] = this.value"
+          style="margin-top:6px;" />
+      `).join('');
+
+      answerSectionHtml = `
+        <div class="form-group">
+          <label>Teks Pilihan Jawaban (Opsional)</label>
+          ${optInputsHtml}
+        </div>
+
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Kunci Jawaban Benar ${q.type === 'mcma' ? '(Bisa klik lebih dari 1 huruf)' : ''}</label>
+          <div class="admin-key-selector">${keysHtml}</div>
+        </div>
+      `;
+    }
 
     item.innerHTML = `
       <div class="admin-q-item-top">
@@ -543,6 +703,7 @@ function renderAdminQuestions() {
           <select onchange="changeAdminQType(${idx}, this.value)">
             <option value="single" ${q.type === 'single' ? 'selected' : ''}>Pilihan Ganda (1 Jawaban)</option>
             <option value="mcma" ${q.type === 'mcma' ? 'selected' : ''}>MCMA (Jawaban Ganda)</option>
+            <option value="category" ${q.type === 'category' ? 'selected' : ''}>Pilihan Kategori (Tabel Benar/Salah)</option>
           </select>
         </div>
         <div class="form-group">
@@ -552,7 +713,7 @@ function renderAdminQuestions() {
       </div>
 
       <div class="form-group">
-        <label>Teks Soal (Opsional jika pakai lembar cetak PDF)</label>
+        <label>Teks Soal / Pengantar (Opsional jika pakai lembar cetak PDF)</label>
         <textarea rows="2" placeholder="Ketik teks soal atau kosongkan..." onchange="adminQuestions[${idx}].text = this.value">${q.text || ''}</textarea>
       </div>
 
@@ -562,25 +723,59 @@ function renderAdminQuestions() {
         ${q.image ? `<img src="${q.image}" class="adm-img-preview" />` : ''}
       </div>
 
-      <div class="form-group">
-        <label>Teks Pilihan Jawaban (Opsional)</label>
-        ${optInputsHtml}
-      </div>
-
-      <div class="form-group" style="margin-bottom:0;">
-        <label>Kunci Jawaban Benar ${q.type === 'mcma' ? '(Bisa klik lebih dari 1 huruf)' : ''}</label>
-        <div class="admin-key-selector">${keysHtml}</div>
-      </div>
+      ${answerSectionHtml}
     `;
     container.appendChild(item);
   });
 }
 
 function changeAdminQType(idx, newType) {
-  adminQuestions[idx].type = newType;
-  if (newType === 'single' && adminQuestions[idx].answer.length > 1) {
-    adminQuestions[idx].answer = [adminQuestions[idx].answer[0]];
+  const q = adminQuestions[idx];
+  q.type = newType;
+
+  if (newType === 'category') {
+    if (!q.categories || q.categories.length < 2) q.categories = ['Benar', 'Salah'];
+    if (!q.statements || q.statements.length === 0) q.statements = ['', '', ''];
+    q.answer = q.statements.map((_, i) => (q.answer[i] && q.categories.includes(q.answer[i])) ? q.answer[i] : q.categories[0]);
+  } else if (newType === 'single') {
+    if (!OPTION_LETTERS.includes(q.answer[0])) q.answer = ['A'];
+    else q.answer = [q.answer[0]];
+  } else if (newType === 'mcma') {
+    if (!q.answer.length || !OPTION_LETTERS.includes(q.answer[0])) q.answer = ['A'];
   }
+  renderAdminQuestions();
+}
+
+function updateAdminCategories(idx, rawValue) {
+  const parsed = rawValue.split(',').map(s => s.trim()).filter(Boolean);
+  if (parsed.length < 2) {
+    alert('Minimal harus ada 2 kategori (contoh: Benar, Salah).');
+    renderAdminQuestions();
+    return;
+  }
+  const q = adminQuestions[idx];
+  q.categories = parsed;
+  q.answer = q.statements.map((_, sIdx) => parsed.includes(q.answer[sIdx]) ? q.answer[sIdx] : parsed[0]);
+  renderAdminQuestions();
+}
+
+function addAdminStatement(idx) {
+  const q = adminQuestions[idx];
+  q.statements.push('');
+  q.answer.push(q.categories[0] || 'Benar');
+  renderAdminQuestions();
+}
+
+function removeAdminStatement(idx, sIdx) {
+  const q = adminQuestions[idx];
+  if (q.statements.length <= 1) return;
+  q.statements.splice(sIdx, 1);
+  q.answer.splice(sIdx, 1);
+  renderAdminQuestions();
+}
+
+function setAdminCategoryKey(idx, sIdx, chosenCat) {
+  adminQuestions[idx].answer[sIdx] = chosenCat;
   renderAdminQuestions();
 }
 
@@ -642,14 +837,27 @@ function buildPacketObject() {
       optionCount,
       token,
       mcmaRule,
-      questions: adminQuestions.map(q => ({
-        type: q.type,
-        text: q.text,
-        image: q.image,
-        options: q.options.slice(0, optionCount),
-        answer: q.answer,
-        points: q.points
-      }))
+      questions: adminQuestions.map(q => {
+        if (q.type === 'category') {
+          return {
+            type: 'category',
+            text: q.text,
+            image: q.image,
+            categories: q.categories,
+            statements: q.statements,
+            answer: q.answer,
+            points: q.points
+          };
+        }
+        return {
+          type: q.type,
+          text: q.text,
+          image: q.image,
+          options: q.options.slice(0, optionCount),
+          answer: q.answer,
+          points: q.points
+        };
+      })
     }
   };
 }
@@ -778,7 +986,9 @@ function importPacketJson(event) {
         text: q.text || '',
         image: q.image || '',
         options: q.options || ['', '', '', '', ''],
-        answer: q.answer || ['A'],
+        categories: q.categories || ['Benar', 'Salah'],
+        statements: q.statements || ['', '', ''],
+        answer: q.answer || (q.type === 'category' ? ['Benar', 'Benar', 'Benar'] : ['A']),
         points: q.points || 2.5
       }));
 
