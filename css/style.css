@@ -884,3 +884,101 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==================== TIPE SOAL PILIHAN KATEGORI (TABEL) ==================== */
+.cat-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.cat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.cat-table th {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 11px 12px;
+  border-bottom: 1.5px solid var(--border-color);
+  text-align: center;
+}
+
+.cat-table th:first-child {
+  text-align: left;
+}
+
+.cat-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+.cat-table tr:last-child td {
+  border-bottom: none;
+}
+
+.cat-choice-cell {
+  text-align: center;
+  width: 86px;
+}
+
+.cat-radio-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.cat-radio-btn.selected {
+  background: var(--primary);
+  box-shadow: inset 0 0 0 4px #ffffff;
+}
+
+/* Editor Kategori di Panel Admin */
+.admin-cat-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  background: #ffffff;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+.admin-cat-keys {
+  display: flex;
+  gap: 5px;
+}
+
+.cat-key-chip {
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-surface);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cat-key-chip.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
