@@ -220,6 +220,9 @@
         <button type="button" class="btn-primary" id="btnNextQ" onclick="navigateQuestion(1)">
           Selanjutnya <i data-lucide="chevron-right"></i>
         </button>
+        <button type="button" id="btnFinishExam" class="btn-primary btn-finish-green" onclick="openConfirmSubmitModal()">
+          Selesai & Kirim Jawaban
+        </button>
       </div>
 
       <div class="card nav-grid-card">
@@ -234,12 +237,6 @@
         <div id="questionNumberGrid" class="number-grid"></div>
       </div>
     </section>
-
-    <div id="examBottomBar" class="exam-bottom-bar hidden">
-      <button type="button" class="btn-primary full-width btn-lg" onclick="openConfirmSubmitModal()">
-        <i data-lucide="send"></i> Selesai & Kirim Jawaban
-      </button>
-    </div>
   </main>
 
   <!-- Modal Konfirmasi Kirim Jawaban -->
