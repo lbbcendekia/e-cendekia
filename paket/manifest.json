@@ -1,23 +1,9 @@
 [
   {
     "title": "Tryout SD Kelas 6 — Simulasi",
-    "subtitle": "Matematika & IPA • 4 Opsi + MCMA",
+    "subtitle": "Matematika & IPA • 4 Opsi, MCMA & Kategori",
     "questionCount": 3,
     "duration": 30,
     "file": "contoh-tryout-sd.json"
-  },
-  {
-    "title": "Tryout ESLUHA",
-    "subtitle": "5 Soal",
-    "questionCount": 5,
-    "duration": 60,
-    "file": "tryout-esluha.json"
-  },
-  {
-    "title": "TRYOUT SD KELAS 9 SPARK",
-    "subtitle": "MATEMATIKA",
-    "questionCount": 5,
-    "duration": 60,
-    "file": "tryout-sd-kelas-9-spark.json"
   }
 ]

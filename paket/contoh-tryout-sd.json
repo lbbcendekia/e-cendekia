@@ -1,35 +1,39 @@
 {
   "title": "Tryout SD Kelas 6 — Simulasi",
-  "subtitle": "Matematika & IPA • 4 Opsi + MCMA",
+  "subtitle": "Matematika & IPA • 4 Opsi, MCMA & Kategori",
   "duration": 30,
   "optionCount": 4,
-  "token": "SD2026",
+  "token": "TRYOUT26",
   "mcmaRule": "all_or_nothing",
-  "sheetUrl": "",
   "questions": [
     {
       "type": "single",
-      "text": "Hasil dari 125 + 75 × 2 adalah...",
+      "text": "Hasil dari 24 × 15 + 140 adalah ....",
       "image": "",
-      "options": ["400", "275", "300", "250"],
-      "answer": ["B"],
+      "options": ["400", "460", "500", "520"],
+      "answer": ["C"],
       "points": 30
     },
     {
       "type": "mcma",
-      "text": "Pilihlah 2 bilangan prima di bawah ini! (Jawaban lebih dari satu)",
+      "text": "Pilihlah dua bilangan di bawah ini yang merupakan faktor prima dari 42!",
       "image": "",
-      "options": ["9", "11", "15", "17"],
-      "answer": ["B", "D"],
-      "points": 40
+      "options": ["2", "4", "6", "7"],
+      "answer": ["A", "D"],
+      "points": 35
     },
     {
-      "type": "single",
-      "text": "Perubahan wujud benda dari cair menjadi gas disebut...",
+      "type": "category",
+      "text": "Sebuah lukisan wayang Pandawa Lima (ABCD) ditempel pada bingkai karton (PQRS) berukuran 80 cm × 40 cm dengan jarak atas dan bawah masing-masing 3 cm. Diketahui karton dan lukisan sebangun. Tentukan Benar atau Salah untuk setiap pernyataan berikut!",
       "image": "",
-      "options": ["Membeku", "Mencair", "Menguap", "Menyublim"],
-      "answer": ["C"],
-      "points": 30
+      "categories": ["Benar", "Salah"],
+      "statements": [
+        "1) Nilai x (jarak tepi kiri dan kanan) adalah 6 cm",
+        "2) Panjang AB adalah 74 cm",
+        "3) Keliling lukisan adalah 204 cm"
+      ],
+      "answer": ["Benar", "Salah", "Benar"],
+      "points": 35
     }
   ]
-}   
+}
