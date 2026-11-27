@@ -10,125 +10,188 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <link rel="stylesheet" href="css/style.css?v=8" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
 </head>
 <body>
 
-  <!-- ==================== 1. LAYAR PILIH PAKET TRYOUT ==================== -->
+  <!-- ==================== 1. LAYAR UTAMA SPLIT-CARD GRADIENT UI ==================== -->
   <section id="homeScreen" class="screen active">
-    <div class="container-narrow">
-      <div class="brand-header">
-        <!-- Logo LBB Cendekia -->
-        <div class="brand-logo-wrap">
-          <img
-            src="assets/logo-cendekia.png"
-            alt="Logo LBB Cendekia"
-            class="brand-logo-img"
-            onerror="this.style.display='none'; document.getElementById('fallbackLogoCendekia').classList.remove('hidden');"
-          />
-          <div id="fallbackLogoCendekia" class="logo-fallback-card hidden">
-            <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
-              <polygon points="30,8 70,8 92,30 92,70 70,92 30,92 8,70 8,30" stroke="#840000" stroke-width="7" fill="none"/>
-              <polygon points="35,20 65,20 80,35 80,65 65,80 35,80 20,65 20,35" stroke="#840000" stroke-width="6" fill="none"/>
-              <text x="50" y="61" text-anchor="middle" fill="#840000" font-size="34" font-weight="900" font-family="Inter, sans-serif">C</text>
-            </svg>
-            <div class="logo-fallback-text">
-              <span class="lbb-small">Lembaga Bimbingan Belajar</span>
-              <strong class="lbb-big">CENDEKIA</strong>
-              <small class="lbb-motto">Mendidik Insan Cerdas, Berkarakter, dan Bertaqwa</small>
+    <div class="split-portal-wrapper">
+      <div class="split-cards-grid">
+
+        <!-- KARTU KIRI: BRANDING & IDENTITAS PORTAL -->
+        <div class="split-card brand-showcase-card">
+          <div class="brand-logo-wrap">
+            <img
+              src="assets/logo-cendekia.png"
+              alt="Logo LBB Cendekia"
+              class="brand-logo-img"
+              onerror="this.style.display='none'; document.getElementById('fallbackLogoSvg').style.display='flex';"
+            />
+            <div id="fallbackLogoSvg" class="fallback-logo-box" style="display:none;">
+              <svg viewBox="0 0 64 64" width="44" height="44" fill="none">
+                <polygon points="32,4 56,18 56,46 32,60 8,46 8,18" stroke="#840000" stroke-width="5" fill="#fff5f5"/>
+                <text x="32" y="40" text-anchor="middle" font-family="Inter,sans-serif" font-weight="800" font-size="24" fill="#840000">C</text>
+              </svg>
+              <div>
+                <div class="fb-sub">Lembaga Bimbingan Belajar</div>
+                <div class="fb-main">CENDEKIA</div>
+              </div>
             </div>
           </div>
+
+          <div class="portal-pill-badge">PORTAL UJIAN LBB CENDEKIA</div>
+
+          <div class="center-emblem-circle">
+            <i data-lucide="graduation-cap"></i>
+          </div>
+
+          <h1 class="showcase-title">Web Platform CBT</h1>
+          <p class="showcase-desc">
+            Sistem ujian berbasis web yang cepat, akurat, dan mudah digunakan di komputer/tablet/handphone.
+          </p>
+          <div class="showcase-accent-line"></div>
         </div>
 
-        <div class="brand-badge">PORTAL UJIAN LBB CENDEKIA</div>
-        <p>Pilih paket ujian tryout di bawah ini untuk mulai mengerjakan.</p>
-      </div>
+        <!-- KARTU KANAN: TAB SWITCHER PESERTA & ADMIN/TENTOR -->
+        <div class="split-card login-form-card">
+          <div class="role-tab-switcher" role="tablist">
+            <button type="button" id="tabRoleStudent" class="role-tab-btn active" onclick="switchPortalRole('student')">
+              <i data-lucide="user"></i> Peserta
+            </button>
+            <button type="button" id="tabRoleAdmin" class="role-tab-btn" onclick="switchPortalRole('admin')">
+              <i data-lucide="shield-check"></i> Admin
+            </button>
+          </div>
 
-      <div id="packetsList" class="packets-grid">
-        <div class="card muted-text" style="text-align:center;">Memuat daftar paket ujian...</div>
-      </div>
+          <!-- MODE 1: FORM PESERTA UJIAN (2 LANGKAH: PILIH PAKET -> ISI BIODATA) -->
+          <div id="studentLoginPane">
+            <!-- LANGKAH 1: DAFTAR PAKET TERSEDIA -->
+            <div id="packetSelectionStep">
+              <div class="form-top-icon">
+                <i data-lucide="book-open-check"></i>
+              </div>
 
-      <!-- Akses Rahasia Panel Admin LBB -->
-      <div class="admin-footer-link">
-        <button type="button" class="btn-link-subtle" onclick="openAdminAuthModal()">Halaman Admin</button>
+              <h2 class="form-card-title">Pilih Paket Tryout</h2>
+              <p class="form-card-subtitle">Klik salah satu paket ujian yang tersedia di bawah ini</p>
+
+              <div id="packetsCardList" class="student-packets-list">
+                <div class="muted-text" style="text-align:center; padding:18px;">Memuat daftar paket ujian...</div>
+              </div>
+            </div>
+
+            <!-- LANGKAH 2: FORM BIODATA & TOKEN (MUNCUL SETELAH PAKET DIPILIH) -->
+            <div id="studentBiodataStep" class="hidden">
+              <div class="selected-packet-topbar">
+                <button type="button" class="btn-back-packet" onclick="backToPacketSelection()">
+                  <i data-lucide="arrow-left"></i> Ganti Paket
+                </button>
+                <span class="selected-packet-pill" id="selectedPacketBadge">Paket Terpilih</span>
+              </div>
+
+              <h2 class="form-card-title" id="selectedPacketHeading">Masuk Ruang Ujian</h2>
+              <p class="form-card-subtitle" id="selectedPacketSubheading">Lengkapi biodata peserta dan masukkan token ujian</p>
+
+              <form id="directExamLoginForm" onsubmit="handleDirectExamLogin(event)">
+                <div class="form-group">
+                  <label for="stuName">Nama Lengkap Siswa</label>
+                  <input type="text" id="stuName" placeholder="Contoh: Budi Santoso" required autocomplete="off" />
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="stuSchool">Asal Sekolah</label>
+                    <input type="text" id="stuSchool" placeholder="SDN 1 / SMPN 2" required autocomplete="off" />
+                  </div>
+                  <div class="form-group">
+                    <label for="stuClass">Kelas / No. Peserta</label>
+                    <input type="text" id="stuClass" placeholder="6A / 01-024" required autocomplete="off" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="stuToken">Token Ujian (Dari Pengawas)</label>
+                  <input
+                    type="text"
+                    id="stuToken"
+                    class="token-input-box"
+                    placeholder="KETIK TOKEN"
+                    required
+                    autocomplete="off"
+                    style="text-transform:uppercase;"
+                  />
+                  <small id="tokenErrorMsg" class="error-text hidden">Token ujian tidak sesuai. Periksa kembali dari pengawas.</small>
+                </div>
+
+                <button type="submit" id="btnStartExamSubmit" class="btn-primary full-width btn-lg btn-submit-gradient">
+                  Mulai Mengerjakan
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- MODE 2: FORM PIN ADMIN / TENTOR -->
+          <div id="adminLoginPane" class="hidden">
+            <div class="form-top-icon">
+              <i data-lucide="lock"></i>
+            </div>
+
+            <h2 class="form-card-title">Portal Admin & Tentor</h2>
+            <p class="form-card-subtitle">Masukkan 6 digit PIN untuk menyusun soal & rekap nilai</p>
+
+            <form onsubmit="submitAdminAuth(event)" style="margin-top: 18px;">
+              <div class="form-group">
+                <label for="adminPinInput">Masukkan PIN</label>
+                <input
+                  type="password"
+                  id="adminPinInput"
+                  class="token-input-box"
+                  maxlength="6"
+                  placeholder="••••••"
+                  required
+                  autocomplete="off"
+                  style="letter-spacing: 8px; font-size: 1.2rem;"
+                />
+                <small id="adminPinError" class="error-text hidden" style="text-align:center;">PIN Admin tidak sesuai.</small>
+              </div>
+
+              <button type="submit" class="btn-primary full-width btn-lg btn-submit-gradient" style="margin-top: 8px;">
+                Masuk Panel Admin
+              </button>
+            </form>
+          </div>
+
+          <div class="card-bottom-credit">Lembaga Bimbingan Belajar Cendekia Yogyakarta</div>
+        </div>
+
       </div>
     </div>
   </section>
 
-  <!-- Modal Identitas Peserta & Token Ujian -->
-  <div id="studentLoginModal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 id="modalPacketTitle">Masuk Ujian</h3>
-        <button class="icon-btn" onclick="closeModal('studentLoginModal')"><i data-lucide="x"></i></button>
-      </div>
-      <form onsubmit="submitStartExam(event)">
-        <input type="hidden" id="selectedPacketFile" />
-        <div class="form-group">
-          <label>Nama Lengkap Siswa</label>
-          <input type="text" id="stuName" required placeholder="Contoh: Budi Santoso" maxlength="40" />
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Asal Sekolah</label>
-            <input type="text" id="stuSchool" required placeholder="SDN 1 / SMPN 2" maxlength="35" />
-          </div>
-          <div class="form-group">
-            <label>Kelas / No. Peserta</label>
-            <input type="text" id="stuClass" required placeholder="6A / 01-024" maxlength="20" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Token Ujian (Dari Pengawas)</label>
-          <input type="text" id="stuTokenInput" required class="token-input" placeholder="KETIK TOKEN" autocomplete="off" />
-          <small id="tokenErrorMsg" class="error-text hidden" style="text-align:left; margin-top:4px;">Token ujian tidak sesuai. Periksa kembali dari pengawas.</small>
-        </div>
-        <button type="submit" class="btn-primary full-width">
-          Mulai Mengerjakan
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal PIN Admin LBB -->
-  <div id="adminAuthModal" class="modal-backdrop hidden">
-    <div class="modal-card small">
-      <div class="modal-header">
-        <h3>Akses Admin LBB</h3>
-        <button class="icon-btn" onclick="closeModal('adminAuthModal')"><i data-lucide="x"></i></button>
-      </div>
-      <form onsubmit="submitAdminAuth(event)">
-        <div class="form-group">
-          <label>Masukkan 6 angka PIN Admin Pembuat Soal</label>
-          <input type="password" id="adminPinInput" required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" class="pin-input" placeholder="••••••" />
-        </div>
-        <p id="adminPinError" class="error-text hidden">PIN Admin salah.</p>
-        <button type="submit" class="btn-primary full-width">Buka Pembuat Soal</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ==================== 2. LAYAR UJIAN CBT ==================== -->
-  <main id="examScreen" class="hidden">
-    <!-- Top Bar Sticky -->
+  <!-- ==================== 2. RUANG UJIAN CBT SISWA ==================== -->
+  <main id="examScreen" class="screen hidden">
     <header class="exam-topbar">
-      <div class="exam-user-meta">
-        <strong id="hudStudentName">Nama Siswa</strong>
-        <span id="hudPacketMeta">Tryout SD • SDN 1</span>
+      <div class="exam-student-meta">
+        <strong id="topbarStudentName">Nama Siswa</strong>
+        <span id="topbarPacketTitle">Tryout • Sekolah</span>
       </div>
-      <div class="exam-timer-box" id="timerBox">
+      <div class="timer-pill" id="timerBadge">
         <i data-lucide="clock"></i>
-        <span id="examTimerText">00:00</span>
+        <span id="timerDisplay">00:00</span>
       </div>
     </header>
 
-    <!-- Status Progress Terjawab -->
     <div class="exam-toolbar">
       <span class="exam-mode-label">Lembar Ujian CBT</span>
       <span class="progress-pill" id="answeredCountBadge">0 / 0 Terjawab</span>
     </div>
 
-    <!-- TAMPILAN CBT (PER NOMOR + TEKS/GAMBAR + OPSI) -->
+    <!-- Banner Peringatan Pindah Tab (Anti-Cheating) -->
+    <div id="tabWarningBanner" class="tab-warning-banner hidden">
+      <i data-lucide="alert-triangle"></i>
+      <span id="tabWarningText">Peringatan: Terdeteksi meninggalkan halaman ujian (1x).</span>
+    </div>
+
     <section id="cbtViewArea" class="exam-body">
       <div class="card question-card">
         <div class="q-header-row">
@@ -136,25 +199,20 @@
           <span class="q-type-badge" id="cbtQuestionType">Pilihan Ganda</span>
         </div>
 
-        <!-- Gambar Soal (Jika Ada) -->
         <div id="cbtImageBox" class="q-image-box hidden">
           <img id="cbtQuestionImg" src="" alt="Gambar Soal" />
         </div>
 
-        <!-- Teks Soal / Instruksi -->
         <p id="cbtQuestionText" class="q-text-content"></p>
 
-        <!-- Daftar Pilihan Jawaban -->
         <div id="cbtOptionsContainer" class="options-stack"></div>
 
-        <!-- Tandai Ragu-Ragu -->
         <label class="doubt-toggle">
           <input type="checkbox" id="cbtDoubtCheck" onchange="toggleDoubtCurrent()" />
           <span>Tandai ragu-ragu pada nomor ini</span>
         </label>
       </div>
 
-      <!-- Navigasi Sebelumnya / Selanjutnya -->
       <div class="cbt-nav-buttons">
         <button type="button" class="btn-outline" id="btnPrevQ" onclick="navigateQuestion(-1)">
           <i data-lucide="chevron-left"></i> Sebelumnya
@@ -164,7 +222,6 @@
         </button>
       </div>
 
-      <!-- Grid Navigasi Nomor Soal -->
       <div class="card nav-grid-card">
         <div class="nav-grid-header">
           <h4>Navigasi Nomor Soal</h4>
@@ -178,7 +235,6 @@
       </div>
     </section>
 
-    <!-- Tombol Kirim Jawaban (Hanya muncul saat di nomor soal terakhir) -->
     <div id="examBottomBar" class="exam-bottom-bar hidden">
       <button type="button" class="btn-primary full-width btn-lg" onclick="openConfirmSubmitModal()">
         <i data-lucide="send"></i> Selesai & Kirim Jawaban
@@ -188,26 +244,31 @@
 
   <!-- Modal Konfirmasi Kirim Jawaban -->
   <div id="confirmSubmitModal" class="modal-backdrop hidden">
-    <div class="modal-card small">
+    <div class="modal-card">
       <div class="modal-header">
         <h3>Kirim Jawaban Ujian?</h3>
-        <button class="icon-btn" onclick="closeModal('confirmSubmitModal')"><i data-lucide="x"></i></button>
+        <button type="button" class="icon-btn" onclick="closeModal('confirmSubmitModal')">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       <p id="submitSummaryText" class="muted-text" style="margin-bottom:16px;"></p>
-      <div class="form-row">
-        <button type="button" class="btn-outline" onclick="closeModal('confirmSubmitModal')">Cek Lagi</button>
-        <button type="button" class="btn-primary" id="btnConfirmSend" onclick="finalizeAndSubmitExam()">Ya, Kirim</button>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn-outline full-width" onclick="closeModal('confirmSubmitModal')">Periksa Lagi</button>
+        <button type="button" class="btn-primary full-width" onclick="finalizeAndSubmitExam()">Ya, Kirim Sekarang</button>
       </div>
     </div>
   </div>
 
-  <!-- ==================== 3. LAYAR HASIL UJIAN ==================== -->
+  <!-- ==================== 3. LAYAR HASIL & SKOR OTOMATIS ==================== -->
   <section id="resultScreen" class="screen hidden">
-    <div class="container-narrow">
-      <div class="result-hero-card">
-        <span class="result-badge">UJIAN SELESAI — E-CENDEKIA</span>
-        <h2 id="resStudentName">Budi Santoso</h2>
-        <p id="resStudentMeta">SDN 1 • Kelas 6A</p>
+    <div class="container result-container">
+      <div class="card result-hero-card">
+        <div class="result-check-icon">
+          <i data-lucide="check-circle-2"></i>
+        </div>
+        <h2>Ujian Selesai!</h2>
+        <p id="resStudentName" class="res-name">Nama Siswa</p>
+        <p id="resStudentMeta" class="muted-text" style="margin-bottom:16px;">Sekolah • Kelas</p>
 
         <div class="score-circle-box" style="margin-bottom:0;">
           <span class="score-label">SKOR AKHIR</span>
@@ -243,105 +304,294 @@
     </div>
   </section>
 
-  <!-- ==================== 4. PANEL ADMIN PEMBUAT SOAL LBB ==================== -->
+  <!-- ==================== 4. PANEL ADMIN 2-CARD SIDEBAR WORKSPACE ==================== -->
   <section id="adminScreen" class="screen hidden">
-    <div class="container-admin">
-      <header class="admin-topbar">
-        <div>
-          <h2>Panel Admin E-Cendekia</h2>
-          <p class="muted-text">Susun paket tryout, unggah gambar soal, lalu kirim atau unduh file paket.</p>
-        </div>
-        <button type="button" class="btn-outline-sm" onclick="exitAdminPanel()">
-          <i data-lucide="log-out"></i> Keluar
-        </button>
-      </header>
+    <div class="admin-split-wrapper">
+      <div class="admin-split-grid">
 
-      <!-- Import Paket Lama untuk Diedit -->
-      <div class="card">
-        <div class="admin-import-row">
-          <div>
-            <h4>Edit Paket Soal yang Sudah Ada?</h4>
-            <p class="muted-text">Muat ulang file <code>.json</code> lama jika ingin merevisi soal atau kunci jawaban.</p>
-          </div>
-          <label class="btn-outline-sm" style="cursor:pointer;">
-            <i data-lucide="upload"></i> Muat File .JSON
-            <input type="file" accept=".json" style="display:none;" onchange="importPacketJson(event)" />
-          </label>
-        </div>
-      </div>
-
-      <!-- Pengaturan Umum Paket Tryout -->
-      <div class="card">
-        <h3>1. Pengaturan Paket Tryout</h3>
-        <div class="form-row" style="margin-top:12px;">
-          <div class="form-group">
-            <label>Judul Paket Tryout</label>
-            <input type="text" id="admTitle" placeholder="Contoh: Tryout SD Kelas 6 - Paket A" />
-          </div>
-          <div class="form-group">
-            <label>Jenjang / Keterangan</label>
-            <input type="text" id="admSubtitle" placeholder="Matematika & IPA • 40 Soal" />
-          </div>
-        </div>
-
-        <div class="form-row-3">
-          <div class="form-group">
-            <label>Durasi Ujian (Menit)</label>
-            <input type="number" id="admDuration" value="60" min="5" max="240" />
-          </div>
-          <div class="form-group">
-            <label>Jumlah Opsi Jawaban</label>
-            <select id="admOptionCount" onchange="renderAdminQuestions()">
-              <option value="3">3 Opsi (A – C)</option>
-              <option value="4" selected>4 Opsi (A – D)</option>
-              <option value="5">5 Opsi (A – E)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Token Masuk Ujian</label>
-            <div class="token-gen-row">
-              <input type="text" id="admToken" value="TRYOUT26" maxlength="12" style="text-transform:uppercase;" />
-              <button type="button" class="btn-secondary-sm" onclick="generateRandomToken()" title="Acak Token">Acak</button>
+        <!-- CARD KIRI: SIDEBAR MENU NAVIGASI ADMIN -->
+        <aside class="split-card admin-sidebar-card">
+          <div class="admin-sidebar-brand">
+            <div class="admin-sidebar-icon">
+              <i data-lucide="shield-check"></i>
+            </div>
+            <div>
+              <span class="admin-role-tag">ADMIN PANEL</span>
+              <h2>CBT Platform</h2>
             </div>
           </div>
-        </div>
 
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Aturan Skor Soal MCMA (Jawaban Ganda)</label>
-          <select id="admMcmaRule">
-            <option value="all_or_nothing">Benar Sempurna (Wajib benar semua baru dapat poin)</option>
-            <option value="partial">Poin Parsial (Proporsional sesuai jumlah pilihan benar)</option>
-          </select>
-        </div>
-      </div>
+          <nav class="admin-nav-menu" aria-label="Menu Admin">
+            <!-- MENU 1 (DEFAULT AKTIF): DASHBOARD -> REKAPITULASI NILAI & EKSPOR -->
+            <button type="button" class="admin-nav-item active" data-tab="recap" onclick="switchAdminTab('recap')">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
+            </button>
+            <!-- MENU 2: RINGKASAN PAKET & REVISI JSON -->
+            <button type="button" class="admin-nav-item" data-tab="dashboard" onclick="switchAdminTab('dashboard')">
+              <i data-lucide="folder-kanban"></i>
+              <span>Ringkasan Paket</span>
+            </button>
+            <!-- MENU 3: PENGATURAN PAKET -->
+            <button type="button" class="admin-nav-item" data-tab="settings" onclick="switchAdminTab('settings')">
+              <i data-lucide="sliders-horizontal"></i>
+              <span>Pengaturan Paket</span>
+            </button>
+            <!-- MENU 4: DAFTAR BUTIR SOAL -->
+            <button type="button" class="admin-nav-item" data-tab="questions" onclick="switchAdminTab('questions')">
+              <i data-lucide="file-question"></i>
+              <span>Daftar Butir Soal</span>
+              <span class="nav-count-badge" id="sideQCountBadge">0</span>
+            </button>
+            <!-- MENU 5: SIMPAN & KIRIM -->
+            <button type="button" class="admin-nav-item" data-tab="publish" onclick="switchAdminTab('publish')">
+              <i data-lucide="cloud-upload"></i>
+              <span>Simpan & Kirim</span>
+            </button>
+          </nav>
 
-      <!-- Daftar Editor Soal -->
-      <div class="card">
-        <div class="admin-q-header">
-          <div>
-            <h3>2. Daftar Butir Soal (<span id="admTotalQCount">0</span> Soal)</h3>
-            <p class="muted-text">Teks soal boleh dikosongkan jika siswa membaca soal dari lembar cetak PDF.</p>
+          <div class="admin-sidebar-footer">
+            <button type="button" class="btn-outline full-width" onclick="exitAdminPanel()">
+              <i data-lucide="log-out"></i> Keluar Panel
+            </button>
           </div>
-          <div class="admin-add-btns">
-            <button type="button" class="btn-outline-sm" onclick="addBulkQuestions(5)">+ 5 Nomor</button>
-            <button type="button" class="btn-primary-sm" onclick="addSingleQuestion()">+ Tambah 1 Soal</button>
+        </aside>
+
+        <!-- KOLOM KANAN: TUMPUKAN KARTU KERJA ADMIN -->
+        <div class="admin-right-stack">
+
+          <!-- CARD KANAN UTAMA: AREA KONTEN MENU AKTIF -->
+          <div class="split-card admin-workspace-card">
+
+            <!-- TAB 1 (DEFAULT TAMPIL PERTAMA): REKAPITULASI NILAI & EKSPOR EXCEL -->
+            <div id="adminTab-recap" class="admin-tab-pane">
+              <div class="admin-pane-header">
+                <div>
+                  <h3>Rekapitulasi Nilai & Ekspor Excel</h3>
+                  <p class="muted-text">Tarik data hasil ujian dari Google Sheets, filter berdasarkan paket/kelas/sekolah, lalu unduh Excel.</p>
+                </div>
+                <div class="admin-add-btns">
+                  <button type="button" id="btnFetchRecap" class="btn-primary-sm" onclick="fetchRecapFromSheets()">
+                    <i data-lucide="refresh-cw"></i> Tarik Data Nilai
+                  </button>
+                  <button type="button" class="btn-outline-sm" onclick="exportRecapToExcelCsv()">
+                    <i data-lucide="file-spreadsheet"></i> Unduh Excel (.CSV)
+                  </button>
+                </div>
+              </div>
+
+              <div class="recap-filter-bar">
+                <select id="filterRecapPacket" onchange="applyRecapFilters()">
+                  <option value="">Semua Paket Ujian</option>
+                </select>
+                <select id="filterRecapSchool" onchange="applyRecapFilters()">
+                  <option value="">Semua Asal Sekolah</option>
+                </select>
+                <select id="filterRecapClass" onchange="applyRecapFilters()">
+                  <option value="">Semua Kelas</option>
+                </select>
+                <select id="sortRecapBy" onchange="applyRecapFilters()">
+                  <option value="newest">Urutkan: Terbaru</option>
+                  <option value="score_desc">Skor Tertinggi</option>
+                  <option value="name_asc">Nama Siswa (A–Z)</option>
+                  <option value="class_asc">Kelas & Nama</option>
+                </select>
+              </div>
+
+              <div class="recap-summary-strip">
+                <span id="recapCountLabel">Menampilkan 0 data siswa</span>
+                <span id="recapAvgLabel">Rata-rata Skor: 0</span>
+              </div>
+
+              <div class="recap-table-wrap">
+                <table class="recap-table">
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>Waktu</th>
+                      <th>Paket Ujian</th>
+                      <th>Nama Siswa</th>
+                      <th>Sekolah</th>
+                      <th>Kelas</th>
+                      <th>Skor</th>
+                      <th>Benar</th>
+                      <th>Keluar Tab</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recapTableBody">
+                    <tr>
+                      <td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">
+                        Klik tombol <strong>Tarik Data Nilai</strong> untuk memuat data terbaru dari Google Sheets.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- TAB 2: RINGKASAN PAKET PEMBUAT SOAL -->
+            <div id="adminTab-dashboard" class="admin-tab-pane hidden">
+              <div class="admin-pane-header">
+                <div>
+                  <h3>Ringkasan Pembuat Soal</h3>
+                  <p class="muted-text">Pantau ringkasan paket yang sedang disusun atau muat paket lama untuk direvisi.</p>
+                </div>
+                <button type="button" class="btn-primary-sm" onclick="switchAdminTab('questions')">
+                  Mulai Susun Soal →
+                </button>
+              </div>
+
+              <div class="admin-stats-grid">
+                <div class="admin-stat-box">
+                  <span class="stat-label">Paket Terpasang</span>
+                  <strong class="stat-value" id="dashInstalledCount">0</strong>
+                  <small class="muted-text">di manifest.json</small>
+                </div>
+                <div class="admin-stat-box">
+                  <span class="stat-label">Butir Soal Draf</span>
+                  <strong class="stat-value" id="dashDraftQCount">0</strong>
+                  <small class="muted-text">sedang diedit</small>
+                </div>
+                <div class="admin-stat-box">
+                  <span class="stat-label">Token Aktif Draf</span>
+                  <strong class="stat-value" id="dashDraftToken">TRYOUT26</strong>
+                  <small class="muted-text" id="dashDraftDuration">60 Menit</small>
+                </div>
+              </div>
+
+              <div class="admin-sub-box" style="margin-bottom:0;">
+                <div class="admin-import-row">
+                  <div>
+                    <h4>Revisi Paket Soal Lama (.JSON)</h4>
+                    <p class="muted-text">Impor file <code>.json</code> yang sudah pernah dibuat untuk mengedit soal atau kunci jawaban.</p>
+                  </div>
+                  <label class="btn-outline-sm" style="cursor:pointer;">
+                    <i data-lucide="upload"></i> Muat File .JSON
+                    <input type="file" accept=".json" style="display:none;" onchange="importPacketJson(event)" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: PENGATURAN PAKET TRYOUT -->
+            <div id="adminTab-settings" class="admin-tab-pane hidden">
+              <div class="admin-pane-header">
+                <div>
+                  <h3>Pengaturan Paket Tryout</h3>
+                  <p class="muted-text">Atur identitas paket, durasi pengerjaan, jumlah opsi, dan token masuk siswa.</p>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Judul Paket Tryout</label>
+                  <input type="text" id="admTitle" placeholder="Contoh: Tryout SD Kelas 6 - Paket A" oninput="updateAdminDashboardStats()" />
+                </div>
+                <div class="form-group">
+                  <label>Jenjang / Keterangan</label>
+                  <input type="text" id="admSubtitle" placeholder="Matematika & IPA • 40 Soal" />
+                </div>
+              </div>
+
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label>Durasi Ujian (Menit)</label>
+                  <input type="number" id="admDuration" value="60" min="5" max="240" oninput="updateAdminDashboardStats()" />
+                </div>
+                <div class="form-group">
+                  <label>Jumlah Opsi Jawaban</label>
+                  <select id="admOptionCount" onchange="renderAdminQuestions()">
+                    <option value="3">3 Opsi (A – C)</option>
+                    <option value="4" selected>4 Opsi (A – D)</option>
+                    <option value="5">5 Opsi (A – E)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Token Masuk Ujian</label>
+                  <div class="token-gen-row">
+                    <input type="text" id="admToken" value="TRYOUT26" maxlength="12" style="text-transform:uppercase;" oninput="updateAdminDashboardStats()" />
+                    <button type="button" class="btn-secondary-sm" onclick="generateRandomToken()" title="Acak Token">Acak</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Aturan Skor Soal Kompleks (MCMA & Pilihan Kategori)</label>
+                <select id="admMcmaRule">
+                  <option value="all_or_nothing">Benar Sempurna (Wajib benar semua baru dapat poin)</option>
+                  <option value="partial">Poin Parsial (Proporsional sesuai jumlah pilihan/pernyataan benar)</option>
+                </select>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+                <button type="button" class="btn-primary" onclick="switchAdminTab('questions')">
+                  Lanjut ke Daftar Soal <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 4: EDITOR DAFTAR BUTIR SOAL -->
+            <div id="adminTab-questions" class="admin-tab-pane hidden">
+              <div class="admin-pane-header">
+                <div>
+                  <h3>Daftar Butir Soal (<span id="admTotalQCount">0</span> Soal)</h3>
+                  <p class="muted-text">Mendukung Pilihan Ganda, MCMA, dan Pilihan Kategori (Tabel Benar/Salah).</p>
+                </div>
+                <div class="admin-add-btns">
+                  <button type="button" class="btn-outline-sm" onclick="addBulkQuestions(5)">+ 5 Nomor</button>
+                  <button type="button" class="btn-primary-sm" onclick="addSingleQuestion()">+ Tambah 1 Soal</button>
+                </div>
+              </div>
+
+              <div id="adminQuestionsContainer" class="admin-q-list"></div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn-outline-sm" onclick="addSingleQuestion()">+ Tambah Nomor Berikutnya</button>
+                <button type="button" class="btn-primary" onclick="switchAdminTab('publish')">
+                  Selesai & Simpan Paket <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 5: SIMPAN & PUBLIKASI PAKET -->
+            <div id="adminTab-publish" class="admin-tab-pane hidden">
+              <div class="admin-pane-header">
+                <div>
+                  <h3>Simpan & Kirim Paket Soal</h3>
+                  <p class="muted-text">Periksa ringkasan paket sebelum mengirim ke Google Drive pusat atau mengunduh cadangan.</p>
+                </div>
+              </div>
+
+              <div class="admin-sub-box">
+                <h4 id="pubPreviewTitle" style="color:var(--primary); margin-bottom:4px;">Paket Tryout LBB</h4>
+                <p class="muted-text" id="pubPreviewMeta">5 Soal • Durasi 60 Menit • Token: TRYOUT26</p>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+                <button type="button" id="btnSendPacketCloud" class="btn-primary full-width btn-lg" onclick="sendPacketToAdminDrive()">
+                  <i data-lucide="cloud-upload"></i> Kirim Paket Soal ke Admin (Otomatis)
+                </button>
+                <button type="button" id="btnDownloadPacketLocal" class="btn-outline full-width" onclick="exportPacketJson()">
+                  <i data-lucide="download"></i> Download Cadangan (.JSON)
+                </button>
+              </div>
+            </div>
+
           </div>
-        </div>
 
-        <div id="adminQuestionsContainer" class="admin-q-list"></div>
-      </div>
+          <!-- CARD KANAN BAWAH (TERPISAH): PAKET UJIAN AKTIF DI HALAMAN SISWA -->
+          <div id="adminActivePacketsCard" class="split-card admin-workspace-card admin-packets-standalone-card">
+            <div class="admin-pane-header" style="margin-bottom: 12px;">
+              <div>
+                <h3>Paket Ujian Aktif di Halaman Siswa</h3>
+                <p class="muted-text">Daftar paket yang terbaca dari <code>paket/manifest.json</code>:</p>
+              </div>
+            </div>
+            <div id="dashActivePacketsList" class="dash-packets-list">
+              <p class="muted-text">Memuat daftar paket...</p>
+            </div>
+          </div>
 
-      <!-- Tombol Ekspor & Kirim Paket JSON -->
-      <div class="card export-box">
-        <h3>3. Selesai Menyusun Soal?</h3>
-        <p class="muted-text" style="margin-bottom:12px;">Kirim paket soal langsung ke Google Drive pusat atau unduh file cadangan ke perangkat.</p>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <button type="button" id="btnSendPacketCloud" class="btn-primary full-width btn-lg" onclick="sendPacketToAdminDrive()">
-            <i data-lucide="cloud-upload"></i> Kirim Paket Soal ke Admin (Otomatis)
-          </button>
-          <button type="button" id="btnDownloadPacketLocal" class="btn-outline full-width" onclick="exportPacketJson()">
-            <i data-lucide="download"></i> Download Cadangan (.JSON)
-          </button>
         </div>
       </div>
     </div>
@@ -350,6 +600,6 @@
   <!-- Iframe Tersembunyi untuk Pengiriman Form Paket Soal ke Google Apps Script -->
   <iframe name="hiddenFrame" style="display:none;width:0;height:0;border:0;"></iframe>
 
-  <script src="js/app.js?v=9"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>
