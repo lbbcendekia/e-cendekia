@@ -1,369 +1,458 @@
 // ==================== KONFIGURASI UTAMA ====================
-const ADMIN_MASTER_PIN = 'MjMxMTI2'; // PIN 6 Angka Admin LBB (231126)
 const DEFAULT_GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMXLtM4WQwOCoDDb-lNpJfyBJR1BP2pRM6CnobiAhdca3hMYhBgw5LaPrA2sMKl-VkbQ/exec';
+const ADMIN_MASTER_PIN = 'MjMxMTI2'; // PIN: 231126
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
 let availablePackets = [];
+let selectedPacketIndex = null;
 let activePacket = null;
-let studentInfo = null;
-let studentAnswers = {}; // Single/MCMA: ['A'] atau ['A','C'] | Category: ['Benar', 'Salah', 'Benar']
-let studentDoubts = {};  // { [qIndex]: true }
+let studentInfo = { name: '', school: '', stuClass: '' };
+let studentAnswers = {};
+let doubtQuestions = {};
 let currentQIndex = 0;
-let timerInterval = null;
 let remainingSeconds = 0;
+let timerInterval = null;
 let lastResultPayload = null;
-
-// State untuk Panel Admin Pembuat Soal
 let adminQuestions = [];
 
+// State Monitoring & Rekap
+let isExamRunning = false;
+let tabSwitchCount = 0;
+let allRecapRows = [];
+let filteredRecapRows = [];
+
 function refreshIcons() {
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
 }
 
-function closeModal(id) {
-  const el = document.getElementById(id);
+function closeModal(modalId) {
+  const el = document.getElementById(modalId);
   if (el) el.classList.add('hidden');
 }
 
-// Helper: Cek apakah sebuah nomor soal sudah terjawab lengkap
-function isQuestionAnswered(q, ans) {
-  if (!ans || !Array.isArray(ans)) return false;
-  if (q.type === 'category') {
-    const stmtCount = (q.statements || []).length;
-    return stmtCount > 0 && ans.length === stmtCount && ans.every(v => v !== null && v !== undefined && v !== '');
+// ==================== 1. TAB SWITCHER, PILIH PAKET & MASUK UJIAN ====================
+function switchPortalRole(role) {
+  const tabStu = document.getElementById('tabRoleStudent');
+  const tabAdm = document.getElementById('tabRoleAdmin');
+  const paneStu = document.getElementById('studentLoginPane');
+  const paneAdm = document.getElementById('adminLoginPane');
+
+  if (role === 'admin') {
+    tabStu.classList.remove('active');
+    tabAdm.classList.add('active');
+    paneStu.classList.add('hidden');
+    paneAdm.classList.remove('hidden');
+
+    const pinInput = document.getElementById('adminPinInput');
+    const pinErr = document.getElementById('adminPinError');
+    if (pinInput) {
+      pinInput.value = '';
+      setTimeout(() => pinInput.focus(), 50);
+    }
+    if (pinErr) pinErr.classList.add('hidden');
+  } else {
+    tabAdm.classList.remove('active');
+    tabStu.classList.add('active');
+    paneAdm.classList.add('hidden');
+    paneStu.classList.remove('hidden');
   }
-  return ans.length > 0;
+  refreshIcons();
 }
 
-// ==================== 1. MUAT DAFTAR PAKET UJIAN ====================
 async function loadPacketsManifest() {
-  const container = document.getElementById('packetsList');
+  const listContainer = document.getElementById('packetsCardList');
+  if (!listContainer) return;
+
   try {
-    const res = await fetch('paket/manifest.json?t=' + Date.now());
-    if (!res.ok) throw new Error('Manifest tidak ditemukan');
+    const res = await fetch(`paket/manifest.json?t=${Date.now()}`);
+    if (!res.ok) throw new Error('Manifest gagal dimuat');
     availablePackets = await res.json();
-    renderPacketsList();
+
+    if (!availablePackets || availablePackets.length === 0) {
+      listContainer.innerHTML = `<div class="muted-text" style="text-align:center; padding:18px;">Belum ada paket ujian tersedia.</div>`;
+      return;
+    }
+
+    listContainer.innerHTML = availablePackets.map((pkt, idx) => `
+      <button type="button" class="packet-select-item" onclick="selectExamPacket(${idx})">
+        <div class="packet-item-info">
+          <strong>${pkt.title}</strong>
+          <div class="packet-item-sub">${pkt.subtitle || 'Tryout CBT'}</div>
+          <div class="packet-item-badges">
+            <span class="pkt-mini-pill">${pkt.questionCount} Soal</span>
+            <span class="pkt-mini-pill">${pkt.duration} Menit</span>
+          </div>
+        </div>
+        <span class="packet-item-arrow">
+          <i data-lucide="chevron-right"></i>
+        </span>
+      </button>
+    `).join('');
+    refreshIcons();
   } catch (err) {
-    container.innerHTML = `
-      <div class="card" style="text-align:center;">
-        <p class="muted-text">Belum ada paket ujian di folder <code>paket/manifest.json</code>.</p>
-      </div>
-    `;
+    listContainer.innerHTML = `<div class="muted-text" style="text-align:center; padding:18px;">Belum ada paket ujian tersedia.</div>`;
   }
 }
 
-function renderPacketsList() {
-  const container = document.getElementById('packetsList');
-  container.innerHTML = '';
+function selectExamPacket(idx) {
+  const pkt = availablePackets[idx];
+  if (!pkt) return;
 
-  availablePackets.forEach(pkt => {
-    const card = document.createElement('div');
-    card.className = 'packet-card';
-    card.onclick = () => openStudentLoginModal(pkt);
-    card.innerHTML = `
-      <div class="packet-info">
-        <h3>${pkt.title}</h3>
-        <p>${pkt.subtitle || ''}</p>
-        <div class="packet-meta-tags">
-          <span class="tag-mini">${pkt.questionCount} Soal</span>
-          <span class="tag-mini">${pkt.duration} Menit</span>
-        </div>
-      </div>
-      <i data-lucide="chevron-right" style="color:#840000;"></i>
-    `;
-    container.appendChild(card);
-  });
-  refreshIcons();
-}
-
-function openStudentLoginModal(pkt) {
-  document.getElementById('selectedPacketFile').value = pkt.file;
-  document.getElementById('modalPacketTitle').innerText = pkt.title;
-  document.getElementById('stuTokenInput').value = '';
+  selectedPacketIndex = idx;
   document.getElementById('tokenErrorMsg').classList.add('hidden');
-  document.getElementById('studentLoginModal').classList.remove('hidden');
+  document.getElementById('selectedPacketBadge').innerText = `${pkt.questionCount} Soal • ${pkt.duration} Menit`;
+  document.getElementById('selectedPacketHeading').innerText = pkt.title;
+  document.getElementById('selectedPacketSubheading').innerText = 'Lengkapi biodata peserta dan masukkan token ujian';
+
+  // Sembunyikan tab switcher Peserta Ujian / Admin agar header naik sejajar
+  const roleSwitcher = document.querySelector('.role-tab-switcher');
+  if (roleSwitcher) roleSwitcher.classList.add('hidden');
+
+  document.getElementById('packetSelectionStep').classList.add('hidden');
+  document.getElementById('studentBiodataStep').classList.remove('hidden');
+  refreshIcons();
+
+  const nameInput = document.getElementById('stuName');
+  if (nameInput) setTimeout(() => nameInput.focus(), 60);
+}
+
+function backToPacketSelection() {
+  selectedPacketIndex = null;
+
+  // Tampilkan kembali tab switcher Peserta Ujian / Admin
+  const roleSwitcher = document.querySelector('.role-tab-switcher');
+  if (roleSwitcher) roleSwitcher.classList.remove('hidden');
+
+  document.getElementById('studentBiodataStep').classList.add('hidden');
+  document.getElementById('packetSelectionStep').classList.remove('hidden');
   refreshIcons();
 }
 
-async function submitStartExam(e) {
+async function handleDirectExamLogin(e) {
   e.preventDefault();
-  const file = document.getElementById('selectedPacketFile').value;
+  const errEl = document.getElementById('tokenErrorMsg');
+  const submitBtn = document.getElementById('btnStartExamSubmit');
+
+  errEl.classList.add('hidden');
+
+  if (selectedPacketIndex === null || !availablePackets[selectedPacketIndex]) {
+    alert('Silakan pilih paket ujian tryout terlebih dahulu.');
+    backToPacketSelection();
+    return;
+  }
+
   const name = document.getElementById('stuName').value.trim();
   const school = document.getElementById('stuSchool').value.trim();
   const stuClass = document.getElementById('stuClass').value.trim();
-  const enteredToken = document.getElementById('stuTokenInput').value.trim().toUpperCase();
+  const inputToken = document.getElementById('stuToken').value.trim().toUpperCase();
+
+  submitBtn.disabled = true;
+  submitBtn.innerText = 'Memeriksa Paket...';
 
   try {
-    const res = await fetch(`paket/${file}?t=` + Date.now());
+    const meta = availablePackets[selectedPacketIndex];
+    const res = await fetch(`paket/${meta.file}?t=${Date.now()}`);
+    if (!res.ok) throw new Error('File soal tidak ditemukan');
     const packetData = await res.json();
 
-    if (packetData.token && enteredToken !== packetData.token.toUpperCase()) {
-      document.getElementById('tokenErrorMsg').classList.remove('hidden');
+    const validToken = (packetData.token || '').trim().toUpperCase();
+    if (validToken && inputToken !== validToken) {
+      errEl.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Mulai Mengerjakan';
       return;
     }
 
     activePacket = packetData;
     studentInfo = { name, school, stuClass };
-    closeModal('studentLoginModal');
+
     startExamSession();
   } catch (err) {
-    alert('Gagal memuat file soal. Pastikan koneksi internet stabil.');
+    alert('Gagal memuat paket soal. Pastikan koneksi stabil dan file paket tersedia.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = 'Mulai Mengerjakan';
   }
 }
 
-// ==================== 2. SESI UJIAN CBT (DENGAN AUTO-SAVE) ====================
+// ==================== 2. SESI UJIAN CBT & DETEKSI PINDAH TAB ====================
 function getStorageBackupKey() {
-  return `tryout_autosave_${activePacket.title}_${studentInfo.name}_${studentInfo.stuClass}`;
+  const slug = (activePacket?.title || 'paket').replace(/\s+/g, '_');
+  const stu = (studentInfo?.name || 'siswa').replace(/\s+/g, '_');
+  return `ecendekia_backup_${slug}_${stu}`;
+}
+
+function saveProgressLocally() {
+  if (!activePacket) return;
+  try {
+    localStorage.setItem(getStorageBackupKey(), JSON.stringify({
+      studentAnswers,
+      doubtQuestions,
+      remainingSeconds,
+      tabSwitchCount
+    }));
+  } catch (_) {}
 }
 
 function startExamSession() {
-  const savedRaw = localStorage.getItem(getStorageBackupKey());
-  if (savedRaw) {
+  studentAnswers = {};
+  doubtQuestions = {};
+  currentQIndex = 0;
+  remainingSeconds = (parseInt(activePacket.duration) || 60) * 60;
+  tabSwitchCount = 0;
+  isExamRunning = true;
+
+  const saved = localStorage.getItem(getStorageBackupKey());
+  if (saved) {
     try {
-      const parsed = JSON.parse(savedRaw);
-      studentAnswers = parsed.answers || {};
-      studentDoubts = parsed.doubts || {};
-      remainingSeconds = parsed.remainingSeconds || (activePacket.duration * 60);
-    } catch (_) {
-      studentAnswers = {};
-      studentDoubts = {};
-      remainingSeconds = activePacket.duration * 60;
-    }
-  } else {
-    studentAnswers = {};
-    studentDoubts = {};
-    remainingSeconds = activePacket.duration * 60;
+      const parsed = JSON.parse(saved);
+      if (parsed.studentAnswers) studentAnswers = parsed.studentAnswers;
+      if (parsed.doubtQuestions) doubtQuestions = parsed.doubtQuestions;
+      if (parsed.remainingSeconds > 10) remainingSeconds = parsed.remainingSeconds;
+      if (parsed.tabSwitchCount) tabSwitchCount = parsed.tabSwitchCount;
+    } catch (_) {}
   }
 
-  currentQIndex = 0;
-  document.getElementById('hudStudentName').innerText = studentInfo.name;
-  document.getElementById('hudPacketMeta').innerText = `${activePacket.title} • ${studentInfo.school} (${studentInfo.stuClass})`;
+  const warnBanner = document.getElementById('tabWarningBanner');
+  if (warnBanner) {
+    if (tabSwitchCount > 0) {
+      document.getElementById('tabWarningText').innerText =
+        `Peringatan: Terdeteksi meninggalkan layar ujian sebanyak ${tabSwitchCount}x. Aktivitas ini tercatat di laporan pengawas.`;
+      warnBanner.classList.remove('hidden');
+    } else {
+      warnBanner.classList.add('hidden');
+    }
+  }
 
   document.getElementById('homeScreen').classList.add('hidden');
   document.getElementById('examScreen').classList.remove('hidden');
 
-  updateAnsweredBadge();
+  document.getElementById('topbarStudentName').innerText = `${studentInfo.name} (${studentInfo.stuClass})`;
+  document.getElementById('topbarPacketTitle').innerText = `${activePacket.title} • ${studentInfo.school}`;
+
   renderCBTQuestion();
   renderNumberGrid();
   startCountdownTimer();
   refreshIcons();
 }
 
-function saveProgressLocally() {
-  if (!activePacket || !studentInfo) return;
-  localStorage.setItem(getStorageBackupKey(), JSON.stringify({
-    answers: studentAnswers,
-    doubts: studentDoubts,
-    remainingSeconds
-  }));
-}
-
 function startCountdownTimer() {
   if (timerInterval) clearInterval(timerInterval);
-  updateTimerDisplay();
+  const displayEl = document.getElementById('timerDisplay');
+  const badgeEl = document.getElementById('timerBadge');
 
+  const updateUI = () => {
+    const mins = Math.floor(remainingSeconds / 60);
+    const secs = remainingSeconds % 60;
+    displayEl.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (remainingSeconds <= 300) badgeEl.classList.add('danger');
+    else badgeEl.classList.remove('danger');
+  };
+
+  updateUI();
   timerInterval = setInterval(() => {
     remainingSeconds--;
-    if (remainingSeconds % 5 === 0) saveProgressLocally();
-    updateTimerDisplay();
-
+    saveProgressLocally();
     if (remainingSeconds <= 0) {
       clearInterval(timerInterval);
-      alert('Waktu ujian telah habis! Jawabanmu akan dikirim otomatis.');
       finalizeAndSubmitExam();
+      return;
     }
+    updateUI();
   }, 1000);
 }
 
-function updateTimerDisplay() {
-  const m = Math.floor(Math.max(0, remainingSeconds) / 60);
-  const s = Math.max(0, remainingSeconds) % 60;
-  const text = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  document.getElementById('examTimerText').innerText = text;
+// Deteksi jika siswa berpindah tab atau keluar dari browser saat ujian berlangsung
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isExamRunning) {
+    recordTabSwitchViolation();
+  }
+});
 
-  const box = document.getElementById('timerBox');
-  if (remainingSeconds <= 300) box.classList.add('warning');
-  else box.classList.remove('warning');
-}
+function recordTabSwitchViolation() {
+  tabSwitchCount++;
+  saveProgressLocally();
 
-function updateAnsweredBadge() {
-  const total = activePacket.questions.length;
-  const answered = activePacket.questions.filter((q, idx) => isQuestionAnswered(q, studentAnswers[idx])).length;
-  document.getElementById('answeredCountBadge').innerText = `${answered} / ${total} Terjawab`;
+  const banner = document.getElementById('tabWarningBanner');
+  const textEl = document.getElementById('tabWarningText');
+  if (banner && textEl) {
+    textEl.innerText = `Peringatan: Terdeteksi meninggalkan layar ujian sebanyak ${tabSwitchCount}x. Aktivitas ini tercatat di laporan pengawas.`;
+    banner.classList.remove('hidden');
+    refreshIcons();
+  }
 }
 
 function renderCBTQuestion() {
-  const q = activePacket.questions[currentQIndex];
-  const total = activePacket.questions.length;
-  const letters = OPTION_LETTERS.slice(0, activePacket.optionCount || 4);
+  const questions = activePacket.questions || [];
+  const q = questions[currentQIndex];
+  if (!q) return;
 
+  const total = questions.length;
   document.getElementById('cbtQuestionNum').innerText = `Soal No. ${currentQIndex + 1} dari ${total}`;
 
-  if (q.type === 'mcma') {
-    document.getElementById('cbtQuestionType').innerText = 'MCMA (Pilih Lebih dari 1)';
-  } else if (q.type === 'category') {
-    document.getElementById('cbtQuestionType').innerText = 'Pilihan Kategori';
-  } else {
-    document.getElementById('cbtQuestionType').innerText = 'Pilihan Ganda';
-  }
+  let typeLabel = 'Pilihan Ganda';
+  if (q.type === 'mcma') typeLabel = 'Pilihan Ganda Kompleks (MCMA)';
+  else if (q.type === 'category') typeLabel = 'Pilihan Kategori';
+  document.getElementById('cbtQuestionType').innerText = typeLabel;
 
   const imgBox = document.getElementById('cbtImageBox');
+  const imgEl = document.getElementById('cbtQuestionImg');
   if (q.image) {
-    document.getElementById('cbtQuestionImg').src = q.image;
+    imgEl.src = q.image;
     imgBox.classList.remove('hidden');
   } else {
     imgBox.classList.add('hidden');
+    imgEl.src = '';
   }
 
-  document.getElementById('cbtQuestionText').innerText =
-    q.text || '(Perhatikan soal pada lembar cetak PDF untuk nomor ini)';
+  document.getElementById('cbtQuestionText').innerText = q.text || '';
 
   const optContainer = document.getElementById('cbtOptionsContainer');
   optContainer.innerHTML = '';
 
   if (q.type === 'category') {
-    // Render Tabel Pilihan Berdasarkan Kategori (misal: Benar / Salah)
-    const categories = (q.categories && q.categories.length) ? q.categories : ['Benar', 'Salah'];
+    const categories = q.categories || ['Benar', 'Salah'];
     const statements = q.statements || [];
-    const selectedArr = studentAnswers[currentQIndex] || [];
+    const currentArr = studentAnswers[currentQIndex] || [];
 
     const tableWrap = document.createElement('div');
     tableWrap.className = 'cat-table-wrap';
 
-    const headerCols = categories.map(cat => `<th>${cat}</th>`).join('');
+    const thCols = categories.map(c => `<th>${c}</th>`).join('');
     const rowsHtml = statements.map((stmt, sIdx) => {
-      const chosenCat = selectedArr[sIdx] || '';
-      const cellsHtml = categories.map(cat => {
-        const isSel = chosenCat === cat;
+      const chosen = currentArr[sIdx] || '';
+      const cells = categories.map(cat => {
+        const isChecked = chosen === cat ? 'checked' : '';
         return `
-          <td class="cat-choice-cell">
-            <button type="button"
-              class="cat-radio-btn ${isSel ? 'selected' : ''}"
-              aria-label="${cat}"
-              onclick="selectCategoryAnswer(${currentQIndex}, ${sIdx}, '${cat.replace(/'/g, "\\'")}')">
-            </button>
+          <td class="cat-radio-cell" onclick="selectCategoryCell(${sIdx}, '${cat.replace(/'/g, "\\'")}')">
+            <span class="cat-radio-dot ${isChecked}"></span>
           </td>
         `;
       }).join('');
-
-      return `
-        <tr>
-          <td>${stmt || `Pernyataan ${sIdx + 1}`}</td>
-          ${cellsHtml}
-        </tr>
-      `;
+      return `<tr><td>${stmt}</td>${cells}</tr>`;
     }).join('');
 
     tableWrap.innerHTML = `
       <table class="cat-table">
         <thead>
-          <tr>
-            <th>Pernyataan</th>
-            ${headerCols}
-          </tr>
+          <tr><th>Pernyataan</th>${thCols}</tr>
         </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
+        <tbody>${rowsHtml}</tbody>
       </table>
     `;
     optContainer.appendChild(tableWrap);
   } else {
-    // Render Pilihan Ganda (Single) & MCMA
-    const selectedArr = studentAnswers[currentQIndex] || [];
+    const optCount = parseInt(activePacket.optionCount) || 4;
+    const letters = OPTION_LETTERS.slice(0, optCount);
+    const chosenArr = studentAnswers[currentQIndex] || [];
 
     letters.forEach((letter, idx) => {
-      const isSelected = selectedArr.includes(letter);
       const optText = (q.options && q.options[idx]) ? q.options[idx] : `Pilihan ${letter}`;
+      const isSelected = chosenArr.includes(letter);
 
-      const div = document.createElement('div');
-      div.className = `option-item ${isSelected ? 'selected' : ''}`;
-      div.onclick = () => selectAnswer(currentQIndex, letter, q.type);
-      div.innerHTML = `
-        <div class="opt-bullet ${q.type === 'mcma' ? 'mcma-box' : ''}">${letter}</div>
-        <div class="opt-label-text">${optText}</div>
+      const item = document.createElement('div');
+      item.className = `option-item ${isSelected ? 'selected' : ''}`;
+      item.onclick = () => selectOptionAnswer(letter, q.type === 'mcma');
+      item.innerHTML = `
+        <span class="opt-letter">${letter}</span>
+        <span class="opt-text">${optText}</span>
       `;
-      optContainer.appendChild(div);
+      optContainer.appendChild(item);
     });
   }
 
-  document.getElementById('cbtDoubtCheck').checked = !!studentDoubts[currentQIndex];
-  document.getElementById('btnPrevQ').disabled = currentQIndex === 0;
-  document.getElementById('btnNextQ').disabled = currentQIndex === total - 1;
+  document.getElementById('cbtDoubtCheck').checked = !!doubtQuestions[currentQIndex];
 
-  // Tampilkan tombol "Selesai & Kirim Jawaban" HANYA saat berada di nomor soal terakhir
+  document.getElementById('btnPrevQ').disabled = currentQIndex === 0;
+  const nextBtn = document.getElementById('btnNextQ');
   const bottomBar = document.getElementById('examBottomBar');
+
   if (currentQIndex === total - 1) {
+    nextBtn.classList.add('hidden');
     bottomBar.classList.remove('hidden');
   } else {
+    nextBtn.classList.remove('hidden');
     bottomBar.classList.add('hidden');
   }
+
+  updateAnsweredCounter();
 }
 
-function selectAnswer(qIdx, letter, type) {
-  let current = studentAnswers[qIdx] ? [...studentAnswers[qIdx]] : [];
-
-  if (type === 'mcma') {
-    if (current.includes(letter)) {
-      current = current.filter(l => l !== letter);
-    } else {
-      current.push(letter);
-      current.sort();
-    }
+function selectOptionAnswer(letter, isMcma) {
+  if (isMcma) {
+    let arr = studentAnswers[currentQIndex] ? [...studentAnswers[currentQIndex]] : [];
+    if (arr.includes(letter)) arr = arr.filter(l => l !== letter);
+    else arr.push(letter);
+    arr.sort();
+    studentAnswers[currentQIndex] = arr;
   } else {
-    current = [letter];
+    studentAnswers[currentQIndex] = [letter];
   }
-
-  studentAnswers[qIdx] = current;
   saveProgressLocally();
-  updateAnsweredBadge();
   renderCBTQuestion();
   renderNumberGrid();
 }
 
-function selectCategoryAnswer(qIdx, stmtIdx, chosenCategory) {
-  const q = activePacket.questions[qIdx];
-  const stmtCount = (q.statements || []).length;
-  let current = Array.isArray(studentAnswers[qIdx]) ? [...studentAnswers[qIdx]] : new Array(stmtCount).fill('');
-
-  while (current.length < stmtCount) current.push('');
-  current[stmtIdx] = chosenCategory;
-
-  studentAnswers[qIdx] = current;
+function selectCategoryCell(stmtIdx, chosenCategory) {
+  const totalStmts = (activePacket.questions[currentQIndex].statements || []).length;
+  let arr = studentAnswers[currentQIndex] ? [...studentAnswers[currentQIndex]] : new Array(totalStmts).fill('');
+  arr[stmtIdx] = chosenCategory;
+  studentAnswers[currentQIndex] = arr;
   saveProgressLocally();
-  updateAnsweredBadge();
   renderCBTQuestion();
   renderNumberGrid();
 }
 
 function toggleDoubtCurrent() {
-  studentDoubts[currentQIndex] = document.getElementById('cbtDoubtCheck').checked;
+  doubtQuestions[currentQIndex] = document.getElementById('cbtDoubtCheck').checked;
   saveProgressLocally();
   renderNumberGrid();
 }
 
 function navigateQuestion(delta) {
-  const next = currentQIndex + delta;
-  if (next >= 0 && next < activePacket.questions.length) {
-    currentQIndex = next;
+  const total = activePacket.questions.length;
+  const target = currentQIndex + delta;
+  if (target >= 0 && target < total) {
+    currentQIndex = target;
     renderCBTQuestion();
     renderNumberGrid();
   }
 }
 
+function isQuestionAnswered(idx) {
+  const q = activePacket.questions[idx];
+  const ans = studentAnswers[idx];
+  if (!ans || ans.length === 0) return false;
+  if (q.type === 'category') {
+    const stmtsLen = (q.statements || []).length;
+    return ans.filter(v => v && v.trim() !== '').length === stmtsLen;
+  }
+  return true;
+}
+
+function updateAnsweredCounter() {
+  const total = activePacket.questions.length;
+  let answered = 0;
+  for (let i = 0; i < total; i++) {
+    if (isQuestionAnswered(i)) answered++;
+  }
+  document.getElementById('answeredCountBadge').innerText = `${answered} / ${total} Terjawab`;
+}
+
 function renderNumberGrid() {
   const grid = document.getElementById('questionNumberGrid');
   grid.innerHTML = '';
+  const total = activePacket.questions.length;
 
-  activePacket.questions.forEach((q, idx) => {
-    const hasAns = isQuestionAnswered(q, studentAnswers[idx]);
-    const isDoubt = !!studentDoubts[idx];
-
+  for (let idx = 0; idx < total; idx++) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'num-btn';
-    if (isDoubt) btn.classList.add('doubt');
-    else if (hasAns) btn.classList.add('answered');
+
+    if (doubtQuestions[idx]) btn.classList.add('doubt');
+    else if (isQuestionAnswered(idx)) btn.classList.add('answered');
     if (idx === currentQIndex) btn.classList.add('current');
 
     btn.innerText = idx + 1;
@@ -373,19 +462,21 @@ function renderNumberGrid() {
       renderNumberGrid();
     };
     grid.appendChild(btn);
-  });
+  }
 }
 
 // ==================== 3. PENILAIAN OTOMATIS & KIRIM KE GOOGLE SHEETS ====================
 function openConfirmSubmitModal() {
   const total = activePacket.questions.length;
-  const answered = activePacket.questions.filter((q, idx) => isQuestionAnswered(q, studentAnswers[idx])).length;
+  let answered = 0;
+  for (let i = 0; i < total; i++) {
+    if (isQuestionAnswered(i)) answered++;
+  }
   const unanswered = total - answered;
 
-  document.getElementById('submitSummaryText').innerText =
-    unanswered > 0
-      ? `Kamu sudah menjawab ${answered} dari ${total} soal. Masih ada ${unanswered} soal kosong / belum lengkap. Yakin ingin mengirim sekarang?`
-      : `Semua ${total} soal sudah terjawab. Kirim jawaban sekarang?`;
+  document.getElementById('submitSummaryText').innerText = unanswered > 0
+    ? `Kamu sudah menjawab ${answered} dari ${total} soal. Masih ada ${unanswered} soal belum lengkap. Yakin ingin mengirim sekarang?`
+    : `Semua ${total} soal sudah terjawab. Kirim jawaban sekarang?`;
 
   document.getElementById('confirmSubmitModal').classList.remove('hidden');
   refreshIcons();
@@ -404,30 +495,24 @@ function calculateExamScore() {
     const pts = parseFloat(q.points) || 1;
     maxScore += pts;
 
-    if (isQuestionAnswered(q, studentAnswers[idx])) answeredCount++;
+    if (isQuestionAnswered(idx)) answeredCount++;
 
     if (q.type === 'category') {
       const userArr = studentAnswers[idx] || [];
       const keyArr = q.answer || [];
-      const stmtCount = keyArr.length;
+      rawAnswersList.push(`${idx + 1}:[${userArr.join(',') || '-'}]`);
 
-      const shortCode = Array.from({ length: stmtCount }, (_, i) => {
-        const val = userArr[i] || '-';
-        return val === '-' ? '-' : val.charAt(0).toUpperCase();
-      }).join(',');
-      rawAnswersList.push(`${idx + 1}:${shortCode || '-'}`);
+      if (keyArr.length > 0) {
+        let matched = 0;
+        keyArr.forEach((k, sIdx) => {
+          if (userArr[sIdx] && userArr[sIdx] === k) matched++;
+        });
 
-      if (stmtCount > 0) {
-        let matchedRows = 0;
-        for (let i = 0; i < stmtCount; i++) {
-          if (userArr[i] && userArr[i] === keyArr[i]) matchedRows++;
-        }
-
-        if (matchedRows === stmtCount) {
+        if (matched === keyArr.length) {
           totalScore += pts;
           correctCount++;
-        } else if (mcmaRule === 'partial' && matchedRows > 0) {
-          totalScore += pts * (matchedRows / stmtCount);
+        } else if (mcmaRule === 'partial' && matched > 0) {
+          totalScore += pts * (matched / keyArr.length);
         }
       }
     } else if (q.type === 'mcma') {
@@ -447,8 +532,8 @@ function calculateExamScore() {
         }
       }
     } else {
-      const userAns = (studentAnswers[idx] || []);
-      const keyAns = (q.answer || []);
+      const userAns = studentAnswers[idx] || [];
+      const keyAns = q.answer || [];
       rawAnswersList.push(`${idx + 1}:${userAns[0] || '-'}`);
 
       if (userAns[0] && userAns[0] === keyAns[0]) {
@@ -469,6 +554,7 @@ function calculateExamScore() {
 }
 
 async function finalizeAndSubmitExam() {
+  isExamRunning = false;
   if (timerInterval) clearInterval(timerInterval);
   closeModal('confirmSubmitModal');
 
@@ -495,13 +581,13 @@ async function finalizeAndSubmitExam() {
     score: result.totalScore,
     maxScore: result.maxScore,
     correctCount: result.correctCount,
+    tabSwitches: tabSwitchCount,
     rawAnswers: result.rawAnswersString
   };
 
   await sendPayloadWithRetry(lastResultPayload);
 }
 
-// Kirim hasil ke Google Sheets secara senyap di belakang layar
 async function sendPayloadWithRetry(payload, maxRetries = 4) {
   const scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
   const retryBtn = document.getElementById('btnRetrySync');
@@ -539,21 +625,15 @@ function retrySendToGoogleSheets() {
 function backToHome() {
   document.getElementById('resultScreen').classList.add('hidden');
   document.getElementById('homeScreen').classList.remove('hidden');
+  backToPacketSelection();
 }
 
-// ==================== 4. PANEL ADMIN PEMBUAT SOAL LBB ====================
-function openAdminAuthModal() {
-  document.getElementById('adminPinInput').value = '';
-  document.getElementById('adminPinError').classList.add('hidden');
-  document.getElementById('adminAuthModal').classList.remove('hidden');
-  refreshIcons();
-}
-
+// ==================== 4. PANEL ADMIN 2-CARD SIDEBAR WORKSPACE ====================
 function submitAdminAuth(e) {
   e.preventDefault();
   const pin = document.getElementById('adminPinInput').value.trim();
   if (btoa(pin) === ADMIN_MASTER_PIN) {
-    closeModal('adminAuthModal');
+    switchPortalRole('student');
     openAdminPanel();
   } else {
     document.getElementById('adminPinError').classList.remove('hidden');
@@ -569,12 +649,76 @@ function openAdminPanel() {
   } else {
     renderAdminQuestions();
   }
+
+  switchAdminTab('dashboard');
+  updateAdminDashboardStats();
   refreshIcons();
 }
 
 function exitAdminPanel() {
   document.getElementById('adminScreen').classList.add('hidden');
   document.getElementById('homeScreen').classList.remove('hidden');
+  switchPortalRole('student');
+}
+
+function switchAdminTab(tabName) {
+  document.querySelectorAll('.admin-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  document.querySelectorAll('.admin-tab-pane').forEach(pane => {
+    pane.classList.add('hidden');
+  });
+
+  const activePane = document.getElementById(`adminTab-${tabName}`);
+  if (activePane) activePane.classList.remove('hidden');
+
+  if (tabName === 'recap' && allRecapRows.length === 0) {
+    fetchRecapFromSheets();
+  }
+
+  updateAdminDashboardStats();
+  refreshIcons();
+}
+
+function updateAdminDashboardStats() {
+  const qCount = adminQuestions.length;
+  const title = (document.getElementById('admTitle')?.value || '').trim() || 'Paket Tryout LBB';
+  const duration = parseInt(document.getElementById('admDuration')?.value) || 60;
+  const token = (document.getElementById('admToken')?.value || '').trim().toUpperCase() || 'TRYOUT26';
+
+  const sideBadge = document.getElementById('sideQCountBadge');
+  const dashQ = document.getElementById('dashDraftQCount');
+  const dashTok = document.getElementById('dashDraftToken');
+  const dashDur = document.getElementById('dashDraftDuration');
+  const dashInstalled = document.getElementById('dashInstalledCount');
+  const pubTitle = document.getElementById('pubPreviewTitle');
+  const pubMeta = document.getElementById('pubPreviewMeta');
+
+  if (sideBadge) sideBadge.innerText = qCount;
+  if (dashQ) dashQ.innerText = `${qCount} Soal`;
+  if (dashTok) dashTok.innerText = token;
+  if (dashDur) dashDur.innerText = `Durasi ${duration} Menit`;
+  if (dashInstalled) dashInstalled.innerText = `${availablePackets.length} Paket`;
+  if (pubTitle) pubTitle.innerText = title;
+  if (pubMeta) pubMeta.innerText = `${qCount} Soal • Durasi ${duration} Menit • Token: ${token}`;
+
+  const listEl = document.getElementById('dashActivePacketsList');
+  if (listEl) {
+    if (!availablePackets || availablePackets.length === 0) {
+      listEl.innerHTML = `<p class="muted-text">Belum ada paket terpasang (atau sedang dijalankan via file lokal tanpa server).</p>`;
+    } else {
+      listEl.innerHTML = availablePackets.map(p => `
+        <div class="dash-packet-row">
+          <div>
+            <strong>${p.title}</strong>
+            <div class="muted-text">${p.subtitle || ''}</div>
+          </div>
+          <span class="tag-mini">${p.questionCount} Soal • ${p.duration}m</span>
+        </div>
+      `).join('');
+    }
+  }
 }
 
 function generateRandomToken() {
@@ -584,6 +728,7 @@ function generateRandomToken() {
     token += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   document.getElementById('admToken').value = token;
+  updateAdminDashboardStats();
 }
 
 function createEmptyQuestion() {
@@ -622,6 +767,7 @@ function renderAdminQuestions() {
   const letters = OPTION_LETTERS.slice(0, optCount);
 
   document.getElementById('admTotalQCount').innerText = adminQuestions.length;
+  updateAdminDashboardStats();
   container.innerHTML = '';
 
   adminQuestions.forEach((q, idx) => {
@@ -794,7 +940,6 @@ function toggleAdminAnswerKey(idx, letter) {
   renderAdminQuestions();
 }
 
-// Kompresi otomatis gambar soal ke JPEG ringan agar kuat 1000 user bersamaan
 function handleAdminImageUpload(event, idx) {
   const file = event.target.files[0];
   if (!file) return;
@@ -878,7 +1023,6 @@ function exportPacketJson() {
   a.click();
   URL.revokeObjectURL(url);
 
-  // Ubah tampilan tombol menjadi hijau bertuliskan "Downloaded" selama 3 detik
   const btn = document.getElementById('btnDownloadPacketLocal');
   if (btn && !btn.dataset.animating) {
     btn.dataset.animating = '1';
@@ -945,7 +1089,6 @@ async function sendPacketToAdminDrive() {
       form.remove();
     }, 1000);
 
-    // Ubah tampilan tombol menjadi hijau bertuliskan "Terkirim!" selama 3 detik
     btn.classList.add('btn-success-state');
     btn.innerHTML = `<i data-lucide="check-circle"></i> Terkirim!`;
     refreshIcons();
@@ -993,12 +1136,193 @@ function importPacketJson(event) {
       }));
 
       renderAdminQuestions();
+      switchAdminTab('questions');
       alert('Paket soal berhasil dimuat untuk diedit!');
     } catch (_) {
       alert('File JSON tidak valid.');
     }
   };
   reader.readAsText(file);
+}
+
+// ==================== 5. REKAP NILAI & EKSPOR EXCEL (.CSV) ====================
+async function fetchRecapFromSheets() {
+  const scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
+  const btn = document.getElementById('btnFetchRecap');
+  const tbody = document.getElementById('recapTableBody');
+
+  if (!scriptUrl || scriptUrl.includes('PASTE_URL')) {
+    alert('URL Google Apps Script belum dipasang di js/app.js.');
+    return;
+  }
+
+  const oriHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = 'Memuat...';
+  }
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px;">Mengambil data nilai dari Google Sheets...</td></tr>`;
+  }
+
+  try {
+    const res = await fetch(`${scriptUrl}?action=get_results&t=${Date.now()}`);
+    const data = await res.json();
+
+    if (data.status === 'ok' && Array.isArray(data.rows)) {
+      allRecapRows = data.rows;
+      populateRecapFilterOptions();
+      applyRecapFilters();
+    } else {
+      throw new Error('Format data tidak valid');
+    }
+  } catch (err) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--primary);">Gagal memuat data. Pastikan Google Apps Script sudah di-deploy ulang dengan akses "Anyone".</td></tr>`;
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oriHtml;
+      refreshIcons();
+    }
+  }
+}
+
+function populateRecapFilterOptions() {
+  const pktSelect = document.getElementById('filterRecapPacket');
+  const schSelect = document.getElementById('filterRecapSchool');
+  const clsSelect = document.getElementById('filterRecapClass');
+
+  const uniquePackets = [...new Set(allRecapRows.map(r => r.packetTitle).filter(Boolean))].sort();
+  const uniqueSchools = [...new Set(allRecapRows.map(r => r.school).filter(Boolean))].sort();
+  const uniqueClasses = [...new Set(allRecapRows.map(r => r.stuClass).filter(Boolean))].sort();
+
+  pktSelect.innerHTML = `<option value="">Semua Paket Ujian</option>` +
+    uniquePackets.map(p => `<option value="${p}">${p}</option>`).join('');
+  schSelect.innerHTML = `<option value="">Semua Asal Sekolah</option>` +
+    uniqueSchools.map(s => `<option value="${s}">${s}</option>`).join('');
+  clsSelect.innerHTML = `<option value="">Semua Kelas</option>` +
+    uniqueClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function applyRecapFilters() {
+  const fPkt = document.getElementById('filterRecapPacket').value;
+  const fSch = document.getElementById('filterRecapSchool').value;
+  const fCls = document.getElementById('filterRecapClass').value;
+  const sortBy = document.getElementById('sortRecapBy').value;
+
+  filteredRecapRows = allRecapRows.filter(r => {
+    if (fPkt && r.packetTitle !== fPkt) return false;
+    if (fSch && r.school !== fSch) return false;
+    if (fCls && r.stuClass !== fCls) return false;
+    return true;
+  });
+
+  if (sortBy === 'score_desc') {
+    filteredRecapRows.sort((a, b) => b.score - a.score);
+  } else if (sortBy === 'name_asc') {
+    filteredRecapRows.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortBy === 'class_asc') {
+    filteredRecapRows.sort((a, b) => a.stuClass.localeCompare(b.stuClass) || a.name.localeCompare(b.name));
+  } else {
+    filteredRecapRows.sort((a, b) => b.rowIndex - a.rowIndex);
+  }
+
+  renderRecapTable();
+}
+
+function renderRecapTable() {
+  const tbody = document.getElementById('recapTableBody');
+  const countLabel = document.getElementById('recapCountLabel');
+  const avgLabel = document.getElementById('recapAvgLabel');
+
+  const count = filteredRecapRows.length;
+  const avg = count > 0
+    ? (filteredRecapRows.reduce((sum, r) => sum + (Number(r.score) || 0), 0) / count).toFixed(2)
+    : '0';
+
+  if (countLabel) countLabel.innerText = `Menampilkan ${count} data siswa`;
+  if (avgLabel) avgLabel.innerText = `Rata-rata Skor: ${avg}`;
+
+  if (!tbody) return;
+  if (count === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data yang sesuai filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredRecapRows.map((r, i) => {
+    const tabBadge = r.tabSwitches > 0
+      ? `<span class="tab-badge-warn">${r.tabSwitches}x Keluar</span>`
+      : `<span class="tab-badge-ok">Aman (0x)</span>`;
+
+    return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${r.timestamp}</td>
+        <td><strong>${r.packetTitle}</strong></td>
+        <td>${r.name}</td>
+        <td>${r.school}</td>
+        <td>${r.stuClass}</td>
+        <td><strong style="color:var(--primary);">${r.score}</strong> / ${r.maxScore}</td>
+        <td>${r.correctCount}</td>
+        <td>${tabBadge}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function exportRecapToExcelCsv() {
+  if (!filteredRecapRows || filteredRecapRows.length === 0) {
+    alert('Belum ada data nilai untuk diunduh. Klik "Tarik Data Nilai" terlebih dahulu.');
+    return;
+  }
+
+  const headers = [
+    'No',
+    'Waktu Selesai',
+    'Paket Ujian',
+    'Nama Siswa',
+    'Asal Sekolah',
+    'Kelas / No Peserta',
+    'Skor Akhir',
+    'Skor Maksimal',
+    'Jumlah Benar',
+    'Keluar Tab (x)',
+    'Rincian Jawaban'
+  ];
+
+  const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+  const csvLines = [
+    headers.map(escapeCsv).join(';'),
+    ...filteredRecapRows.map((r, i) => [
+      i + 1,
+      r.timestamp,
+      r.packetTitle,
+      r.name,
+      r.school,
+      r.stuClass,
+      String(r.score).replace('.', ','),
+      r.maxScore,
+      r.correctCount,
+      r.tabSwitches,
+      r.rawAnswers
+    ].map(escapeCsv).join(';'))
+  ];
+
+  const csvContent = '\uFEFF' + csvLines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const fPkt = document.getElementById('filterRecapPacket').value || 'Semua-Paket';
+  const slug = fPkt.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Rekap-Nilai-${slug}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
